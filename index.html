@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema Supervila - Gestão de Caixa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: "Plus Jakarta Sans", sans-serif; transition: all 0.3s; }
+    .bg-supervila-red { background-color: #e31d1a; }
+    .text-supervila-red { color: #e31d1a; }
+    .bg-supervila-yellow { background-color: #fff200; }
+    .sidebar-item.active { background: #e31d1a !important; color: white !important; transform: translateX(5px); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .login-error { animation: shake 0.3s; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+    
+    /* Modal Editar */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center; }
+    .modal-overlay.active { display:flex; animation: fadeIn 0.25s ease; }
+    .modal-box { background:#fff; border-radius:24px; padding:32px; width:90%; max-width:480px; box-shadow:0 25px 60px rgba(0,0,0,0.25); }
+
+    /* Toggle senha */
+    .pwd-wrap { position:relative; }
+    .pwd-wrap input { padding-right:48px; }
+    .pwd-toggle { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:20px; color:#94a3b8; transition:color 0.2s; }
+    .pwd-toggle:hover { color:#e31d1a; }
+
+    /* Filtro PDF */
+    .filter-bar { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+    .filter-bar label { font-size:10px; font-weight:800; text-transform:uppercase; color:#64748b; letter-spacing:0.05em; display:block; margin-bottom:4px; }
+    .filter-bar input, .filter-bar select { border:2px solid #e2e8f0; border-radius:12px; padding:10px 14px; font-family:inherit; font-weight:600; font-size:13px; outline:none; background:#f8fafc; transition:border 0.2s; }
+    .filter-bar input:focus, .filter-bar select:focus { border-color:#e31d1a; }
+  </style>
+</head>
+
+<body class="bg-[#f8fafc] text-slate-800">
+
+  <!-- TELA DE LOGIN -->
+  <div id="telaLogin" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900 p-4">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border-t-8 border-[#e31d1a]">
+      <div class="text-center mb-8">
+        <div class="bg-supervila-red p-3 rounded-xl inline-block mb-3">
+          <span class="text-[#fff200] font-black text-2xl">SUPERVILA</span>
+        </div>
+        <h2 class="text-lg font-bold text-slate-800 uppercase">Controle de Caixa</h2>
+        <p class="text-xs text-slate-400 mt-1">Entre com suas credenciais</p>
+      </div>
+      
+      <div id="loginForm" class="space-y-4">
+        <div>
+          <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Usuário</label>
+          <input 
+            type="text" 
+            id="inputUsuario" 
+            placeholder="Digite seu usuário" 
+            class="w-full bg-slate-100 border-2 border-slate-200 p-4 outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 rounded-xl font-semibold"
+            onkeypress="if(event.key==='Enter') document.getElementById('inputSenha').focus()"
+          />
+        </div>
+        
+        <div>
+          <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Senha</label>
+          <div class="pwd-wrap">
+            <input 
+              type="password" 
+              id="inputSenha" 
+              placeholder="Digite sua senha" 
+              class="w-full bg-slate-100 border-2 border-slate-200 p-4 outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 rounded-xl font-semibold"
+              onkeypress="if(event.key==='Enter') verificarLogin()"
+            />
+            <button type="button" class="pwd-toggle" onclick="toggleSenha('inputSenha', this)" title="Mostrar/ocultar senha">👁️</button>
+          </div>
+        </div>
+        
+        <div id="msgErro" class="hidden bg-rose-50 border-l-4 border-rose-500 p-3 rounded-lg">
+          <p class="text-xs font-bold text-rose-700">❌ Usuário ou senha inválidos!</p>
+        </div>
+        
+        <button 
+          onclick="verificarLogin()" 
+          class="w-full bg-[#e31d1a] text-white font-bold h-14 rounded-xl hover:bg-red-700 shadow-lg transition-all uppercase"
+        >
+          Entrar no Sistema
+        </button>
+      </div>
+      
+      <div id="carregando" class="hidden text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent mx-auto mb-3"></div>
+        <p class="text-sm font-semibold text-slate-600">Verificando credenciais...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP PRINCIPAL -->
+  <div id="app" class="hidden min-h-screen flex flex-col md:flex-row">
+    <aside class="w-full md:w-64 bg-white border-r border-slate-200 p-6 flex flex-col">
+      <div class="mb-10 text-center">
+        <div class="bg-supervila-red p-2 rounded-xl inline-block mb-2">
+          <span class="text-[#fff200] font-black text-xl">SUPERVILA</span>
+        </div>
+        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Controle de Caixa</p>
+        <div class="mt-3 bg-slate-100 rounded-lg p-2">
+          <p class="text-[9px] text-slate-500 font-bold uppercase">Unidade Ativa</p>
+          <p class="text-xs font-black text-supervila-red" id="sidebarUnidade">-</p>
+        </div>
+      </div>
+      <nav class="space-y-3 flex-1">
+        <button onclick="mudarTab('dash', this)" class="sidebar-item active w-full text-left px-5 py-3 rounded-xl font-bold flex items-center gap-3">📊 Dashboard</button>
+        <button onclick="mudarTab('lancar', this)" class="sidebar-item w-full text-left px-5 py-3 rounded-xl font-bold text-slate-500 flex items-center gap-3">➕ Novo Lançamento</button>
+        <button onclick="mudarTab('historico', this)" class="sidebar-item w-full text-left px-5 py-3 rounded-xl font-bold text-slate-500 flex items-center gap-3">📖 Livro de Caixa</button>
+        <button onclick="mudarTab('config', this)" class="sidebar-item w-full text-left px-5 py-3 rounded-xl font-bold text-slate-500 flex items-center gap-3">⚙️ Configurações</button>
+      </nav>
+      <div class="mt-4 bg-slate-50 rounded-lg p-3 border border-slate-200">
+        <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">Logado como:</p>
+        <p class="text-xs font-black text-slate-700" id="sidebarUsuario">-</p>
+      </div>
+      <button onclick="fazerLogout()" class="mt-3 px-4 py-3 rounded-xl font-bold text-rose-500 hover:bg-rose-50 border border-rose-100 transition-all text-center">Sair do Sistema</button>
+    </aside>
+
+    <main class="flex-1 p-6 md:p-10 overflow-y-auto h-screen">
+      <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+          <h1 class="text-2xl font-black text-slate-800">Olá, <span id="nomeOperador">Operador</span>! 👋</h1>
+          <p class="text-sm text-slate-500">Unidade: <span class="font-bold text-supervila-red" id="txtUnidade">-</span></p>
+        </div>
+      </header>
+
+      <!-- TAB: DASHBOARD -->
+      <div id="tab-dash" class="tab-content active space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div class="bg-white p-4 rounded-2xl border-b-4 border-emerald-400 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Recebido</p>
+            <h3 id="cardReceitas" class="text-emerald-600 font-black text-xl">R$ 0,00</h3>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border-b-4 border-rose-400 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Pago</p>
+            <h3 id="cardPago" class="text-rose-600 font-black text-xl">R$ 0,00</h3>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border-b-4 border-orange-400 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Saldo Movimentação</p>
+            <h3 id="cardFluxo" class="text-orange-600 font-black text-xl">R$ 0,00</h3>
+          </div>
+          <div class="bg-slate-100 p-4 rounded-2xl border-b-4 border-slate-400 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Saldo Prévio</p>
+            <h3 id="cardPrevio" class="text-slate-700 font-black text-xl">R$ 0,00</h3>
+          </div>
+          <div class="bg-supervila-yellow p-4 rounded-2xl border-b-4 border-yellow-600 shadow-sm">
+            <p class="text-[10px] font-bold text-yellow-800 uppercase">Saldo em Caixa</p>
+            <h3 id="cardSaldoRestante" class="text-slate-900 font-black text-2xl">R$ 0,00</h3>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <div class="bg-white p-6 rounded-3xl border shadow-sm">
+            <h4 class="text-sm font-bold text-slate-500 mb-4 uppercase text-center">Proporção do Fluxo</h4>
+            <div class="h-64"><canvas id="graficoPizza"></canvas></div>
+          </div>
+          <div class="bg-white p-6 rounded-3xl border shadow-sm">
+            <h4 class="text-sm font-bold text-slate-500 mb-4 uppercase text-center">Comparativo Absoluto (R$)</h4>
+            <div class="h-64"><canvas id="graficoBarras"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: NOVO LANÇAMENTO -->
+      <div id="tab-lancar" class="tab-content">
+        <div class="max-w-2xl mx-auto bg-white p-10 rounded-[40px] border shadow-2xl">
+          <h3 class="text-2xl font-black text-slate-800 mb-8 border-l-8 border-[#e31d1a] pl-4">Novo Registro</h3>
+          <div class="space-y-4">
+            <input type="date" id="data" class="w-full border-2 border-slate-100 p-4 outline-none focus:border-red-500 bg-slate-50 rounded-2xl font-bold" />
+            <input type="text" id="desc" placeholder="Descrição do lançamento" class="w-full border-2 border-slate-100 p-4 outline-none focus:border-red-500 bg-slate-50 rounded-2xl font-semibold" />
+            <div class="grid grid-cols-2 gap-4">
+              <select id="tipoOperacao" class="w-full border-2 border-slate-100 p-4 outline-none focus:border-red-500 bg-slate-50 rounded-2xl font-bold">
+                <option value="recebido">Entrada (Recebido)</option>
+                <option value="pago">Saída (Pago)</option>
+              </select>
+              <input type="number" step="0.01" id="valor" placeholder="Valor R$" class="w-full border-2 border-slate-100 p-4 outline-none focus:border-red-500 bg-slate-50 font-black text-red-600 rounded-2xl" />
+            </div>
+            <button onclick="lancar()" id="btnLancar" class="w-full mt-6 bg-[#e31d1a] text-white font-black h-16 rounded-2xl shadow-xl hover:bg-red-700 transition-all">SALVAR NO LIVRO</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: LIVRO DE CAIXA -->
+      <div id="tab-historico" class="tab-content">
+        <div class="bg-white p-8 rounded-3xl border shadow-sm">
+          <!-- Cabeçalho + Filtros PDF -->
+          <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
+            <h3 class="text-xl font-black text-slate-800 uppercase">📖 Movimentação Completa</h3>
+          </div>
+
+          <!-- Barra de filtro para PDF -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6">
+            <p class="text-[10px] font-black text-slate-500 uppercase mb-3">📄 Gerar PDF por período</p>
+            <div class="filter-bar">
+              <div>
+                <label>Tipo de Filtro</label>
+                <select id="filtroTipo" onchange="atualizarFiltroPeriodo()">
+                  <option value="mes">Por Mês</option>
+                  <option value="periodo">Por Período</option>
+                </select>
+              </div>
+              <!-- Seletor por mês -->
+              <div id="wrapFiltroMes">
+                <label>Mês</label>
+                <select id="filtroMes"></select>
+              </div>
+              <div id="wrapFiltroMesAno">
+                <label>Ano</label>
+                <select id="filtroMesAno"></select>
+              </div>
+              <!-- Seletor por período -->
+              <div id="wrapFiltroPeriodoInicio" style="display:none;">
+                <label>De</label>
+                <input type="date" id="filtroPeriodoInicio" />
+              </div>
+              <div id="wrapFiltroPeriodoFim" style="display:none;">
+                <label>Até</label>
+                <input type="date" id="filtroPeriodoFim" />
+              </div>
+              <!-- Botão gerar -->
+              <button onclick="gerarPDFLivroCaixa()" class="bg-[#e31d1a] hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all" style="height:42px;">
+                📄 GERAR PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabela -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="text-[10px] font-black uppercase text-slate-400 border-b-2 border-slate-50">
+                  <th class="p-4">ID</th>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th class="text-right">Recebido (R$)</th>
+                  <th class="text-right">Pago (R$)</th>
+                  <th class="text-right">Saldo (R$)</th>
+                  <th class="text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="corpoTabelaLivro" class="font-semibold text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: CONFIGURAÇÕES -->
+      <div id="tab-config" class="tab-content">
+        <div class="max-w-md bg-white p-10 rounded-3xl border shadow-sm mx-auto">
+          <div class="text-center mb-8">
+            <div class="bg-yellow-100 p-3 rounded-full inline-block mb-3">
+              <span class="text-3xl">⚙️</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800">Configurar Saldo Inicial</h3>
+            <p class="text-xs text-slate-500 mt-2">⚠️ Esta operação requer autorização</p>
+          </div>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Novo Saldo Inicial</label>
+              <input 
+                type="number" 
+                step="0.01"
+                id="inputSaldoPrevio" 
+                placeholder="R$ 0,00"
+                class="w-full border-2 border-slate-200 p-4 font-black text-2xl outline-none focus:border-yellow-400 text-center rounded-xl" 
+              />
+            </div>
+            
+            <div>
+              <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">🔐 Senha de Confirmação</label>
+              <div class="pwd-wrap">
+                <input 
+                  type="password" 
+                  id="senhaConfirmacao" 
+                  placeholder="Digite a senha de autorização"
+                  class="w-full border-2 border-slate-200 p-4 outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 rounded-xl font-semibold text-center"
+                  onkeypress="if(event.key==='Enter') salvarConfiguracoes()"
+                />
+                <button type="button" class="pwd-toggle" onclick="toggleSenha('senhaConfirmacao', this)" title="Mostrar/ocultar senha">👁️</button>
+              </div>
+            </div>
+            
+            <div id="msgErroConfig" class="hidden bg-rose-50 border-l-4 border-rose-500 p-3 rounded-lg">
+              <p class="text-xs font-bold text-rose-700"></p>
+            </div>
+            
+            <div id="msgSucessoConfig" class="hidden bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-lg">
+              <p class="text-xs font-bold text-emerald-700">✅ Saldo inicial atualizado com sucesso!</p>
+            </div>
+            
+            <button 
+              onclick="salvarConfiguracoes()" 
+              id="btnSalvarConfig"
+              class="w-full mt-6 bg-slate-900 text-white font-black h-14 rounded-2xl hover:bg-slate-800 transition-all"
+            >
+              ATUALIZAR SALDO INICIAL
+            </button>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-6">
+              <p class="text-[10px] font-bold text-slate-500 uppercase mb-2">ℹ️ Informação</p>
+              <p class="text-xs text-slate-600">O saldo inicial representa o valor em caixa antes dos lançamentos atuais. Esta operação requer senha de autorização para segurança.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL EDITAR REGISTRO -->
+  <div id="modalEditar" class="modal-overlay">
+    <div class="modal-box">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-black text-slate-800">✏️ Editar Registro</h3>
+        <button onclick="fecharModalEditar()" class="text-slate-400 hover:text-rose-500 text-2xl font-bold leading-none">×</button>
+      </div>
+      <div class="space-y-4">
+        <input type="hidden" id="editId" />
+        <div>
+          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Data</label>
+          <input type="date" id="editData" class="w-full border-2 border-slate-200 p-3 rounded-xl font-bold outline-none focus:border-red-500 bg-slate-50" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Descrição</label>
+          <input type="text" id="editDesc" placeholder="Descrição" class="w-full border-2 border-slate-200 p-3 rounded-xl font-semibold outline-none focus:border-red-500 bg-slate-50" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label>
+            <select id="editTipo" class="w-full border-2 border-slate-200 p-3 rounded-xl font-bold outline-none focus:border-red-500 bg-slate-50">
+              <option value="recebido">Entrada (Recebido)</option>
+              <option value="pago">Saída (Pago)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Valor (R$)</label>
+            <input type="number" step="0.01" id="editValor" placeholder="0,00" class="w-full border-2 border-slate-200 p-3 rounded-xl font-black text-red-600 outline-none focus:border-red-500 bg-slate-50" />
+          </div>
+        </div>
+        <div class="flex gap-3 pt-4">
+          <button onclick="salvarEditar()" id="btnSalvarEditar" class="flex-1 bg-[#e31d1a] text-white font-black h-12 rounded-xl hover:bg-red-700 transition-all">SALVAR ALTERAÇÕES</button>
+          <button onclick="fecharModalEditar()" class="px-6 h-12 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzI2HIMBrrLrsrnzyPNNGfl8v_mbYteUF-R-k3vfkqub_Y_kN-S1BA8B_KOeovCtg9l/exec";
+    
+    /*
+     * ============================================================
+     * USUÁRIOS — COMO MOVER AS SENHAS PARA O APPS SCRIPT:
+     * ============================================================
+     * 1) No seu Apps Script, crie uma aba chamada "Usuarios" com:
+     *    Coluna A: usuario (ex: supervilaalta)
+     *    Coluna B: senha
+     *    Coluna C: unidade (ex: caixa supervila alta)
+     *    Coluna D: nome (ex: Supervila Alta)
+     *
+     * 2) No seu Apps Script, adicione este tratamento na função
+     *    principal (doGet/doPost), ANTES de qualquer outra lógica:
+     *
+     *    if (params.action === 'login') {
+     *      const sheet = SpreadsheetApp.getActiveSpreadsheet()
+     *                      .getSheetByName('Usuarios');
+     *      const dados = sheet.getDataRange().getValues();
+     *      for (let i = 1; i < dados.length; i++) {
+     *        if (dados[i][0] === params.usuario && dados[i][1] === params.senha) {
+     *          return ContentService.createTextOutput(JSON.stringify({
+     *            ok: true,
+     *            unidade: dados[i][2],
+     *            nome: dados[i][3]
+     *          })).setMimeType(ContentService.MIME_TYPE.JSON);
+     *        }
+     *      }
+     *      return ContentService.createTextOutput(JSON.stringify({ ok: false }))
+     *                .setMimeType(ContentService.MIME_TYPE.JSON);
+     *    }
+     *
+     * 3) Para a ação "editar", adicione no doPost:
+     *
+     *    if (body.action === 'editar') {
+     *      const sheet = SpreadsheetApp.getActiveSpreadsheet()
+     *                      .getSheetByName(body.usuario);
+     *      const dados = sheet.getDataRange().getValues();
+     *      for (let i = 1; i < dados.length; i++) {
+     *        if (String(dados[i][0]) === String(body.id)) {
+     *          sheet.getRange(i + 1, 2).setValue(body.data);
+     *          sheet.getRange(i + 1, 3).setValue(body.desc);
+     *          sheet.getRange(i + 1, 4).setValue(Number(body.recebido));
+     *          sheet.getRange(i + 1, 5).setValue(Number(body.pago));
+     *          break;
+     *        }
+     *      }
+     *      return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+     *                .setMimeType(ContentService.MIME_TYPE.JSON);
+     *    }
+     *
+     * Depois deletar o objeto USUARIOS deste arquivo e usar só a
+     * chamada à API para login (função verificarLogin abaixo já
+     * faz isso quando USUARIOS é nulo).
+     * ============================================================
+     */
+
+    // Enquanto não mover para o Apps Script, mantém aqui como fallback.
+    // Para usar exclusivamente via API, setar como null:
+    // const USUARIOS = null;
+    const USUARIOS = {
+      "supervilaalta":  { senha: "S0l@2003",   unidade: "caixa supervila alta",  nome: "Supervila Alta" },
+      "supervilamuriti":{ senha: "Ers626637",  unidade: "caixa supervila muriti",nome: "Supervila Muriti" },
+      "admin":          { senha: "admin10",    unidade: "admin",                 nome: "Administrador" }
+    };
+
+    let usuarioLogado = null;
+    let chartPizza   = null;
+    let chartBarras  = null;
+    let dadosCache   = { lista: [], saldoPrevio: 0 }; // cache para PDF filtrado
+
+    // ─── INIT ───────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('data').value = new Date().toISOString().split('T')[0];
+      popularFiltroMesAno();
+      verificarSessaoSalva();
+    });
+
+    // ─── TOGGLE SENHA (login + config) ──────────────────────────
+    function toggleSenha(inputId, btn) {
+      const inp = document.getElementById(inputId);
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        inp.type = 'password';
+        btn.textContent = '👁️';
+      }
+    }
+
+    // ─── SESSÃO PERSISTENTE ─────────────────────────────────────
+    function verificarSessaoSalva() {
+      const s = localStorage.getItem('supervilaSessao');
+      if (!s) return;
+      try {
+        const d = JSON.parse(s);
+        // valida contra cache local se existir
+        if (USUARIOS && USUARIOS[d.usuario] && USUARIOS[d.usuario].senha === d.senha) {
+          usuarioLogado = d;
+          entrarNoApp();
+        } else if (!USUARIOS) {
+          // sem cache local, confia na sessão salva e valida via API na próxima ação
+          usuarioLogado = d;
+          entrarNoApp();
+        } else {
+          localStorage.removeItem('supervilaSessao');
+        }
+      } catch(e) { localStorage.removeItem('supervilaSessao'); }
+    }
+
+    function salvarSessao(d)  { localStorage.setItem('supervilaSessao', JSON.stringify(d)); }
+    function removerSessao()  { localStorage.removeItem('supervilaSessao'); }
+
+    function entrarNoApp() {
+      document.getElementById("telaLogin").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
+      document.getElementById("txtUnidade").innerText      = usuarioLogado.nome;
+      document.getElementById("sidebarUnidade").innerText  = usuarioLogado.nome;
+      document.getElementById("sidebarUsuario").innerText  = usuarioLogado.usuario;
+      document.getElementById("nomeOperador").innerText    = usuarioLogado.nome.split(" ")[0];
+      atualizarTabela();
+    }
+
+    // ─── LOGIN ──────────────────────────────────────────────────
+    async function verificarLogin() {
+      const usuario = document.getElementById("inputUsuario").value.toLowerCase().trim();
+      const senha   = document.getElementById("inputSenha").value;
+      const msgErro = document.getElementById("msgErro");
+      const form    = document.getElementById("loginForm");
+
+      msgErro.classList.add("hidden");
+
+      if (!usuario || !senha) {
+        msgErro.querySelector("p").innerText = "❌ Preencha usuário e senha!";
+        msgErro.classList.remove("hidden");
+        form.classList.add("login-error");
+        setTimeout(() => form.classList.remove("login-error"), 300);
+        return;
+      }
+
+      // --- Tenta login via API primeiro (sem senha no código) ---
+      let dadosLogin = null;
+      try {
+        const res  = await fetch(`${API_URL}?action=login&usuario=${usuario}&senha=${senha}`);
+        dadosLogin = await res.json();
+      } catch(e) { /* se falhar, cai no fallback */ }
+
+      if (dadosLogin && dadosLogin.ok) {
+        // Login bem-sucedido pela API
+        usuarioLogado = { usuario, senha, unidade: dadosLogin.unidade, nome: dadosLogin.nome };
+      } else if (USUARIOS && USUARIOS[usuario] && USUARIOS[usuario].senha === senha) {
+        // Fallback: usa cache local (remover quando API estiver configurada)
+        usuarioLogado = { usuario, senha, unidade: USUARIOS[usuario].unidade, nome: USUARIOS[usuario].nome };
+      } else {
+        msgErro.querySelector("p").innerText = "❌ Usuário ou senha inválidos!";
+        msgErro.classList.remove("hidden");
+        form.classList.add("login-error");
+        setTimeout(() => form.classList.remove("login-error"), 300);
+        return;
+      }
+
+      salvarSessao(usuarioLogado);
+      form.classList.add("hidden");
+      document.getElementById("carregando").classList.remove("hidden");
+      setTimeout(() => entrarNoApp(), 800);
+    }
+
+    // ─── TABS ───────────────────────────────────────────────────
+    function mudarTab(id, el) {
+      document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+      document.getElementById("tab-" + id).classList.add("active");
+      document.querySelectorAll(".sidebar-item").forEach(b => b.classList.remove("active"));
+      el.classList.add("active");
+    }
+
+    function fazerLogout() {
+      if (confirm("Deseja realmente sair do sistema?")) {
+        removerSessao();
+        usuarioLogado = null;
+        location.reload();
+      }
+    }
+
+    // ─── BUSCA + RENDER ─────────────────────────────────────────
+    async function atualizarTabela() {
+      if (!usuarioLogado) return;
+      try {
+        const res  = await fetch(`${API_URL}?senha=${usuarioLogado.senha}&usuario=${usuarioLogado.unidade}&action=ler`);
+        const data = await res.json();
+
+        dadosCache.lista      = data.lista || [];
+        dadosCache.saldoPrevio = parseFloat(data.saldoPrevio) || 0;
+
+        let tRec = 0, tPag = 0;
+        dadosCache.lista.forEach(i => { tRec += parseFloat(i[3])||0; tPag += parseFloat(i[4])||0; });
+
+        const mov  = tRec - tPag;
+        const final_ = dadosCache.saldoPrevio + mov;
+
+        document.getElementById("cardReceitas").innerText      = fmt(tRec);
+        document.getElementById("cardPago").innerText          = fmt(tPag);
+        document.getElementById("cardFluxo").innerText         = fmt(mov);
+        document.getElementById("cardPrevio").innerText        = fmt(dadosCache.saldoPrevio);
+        document.getElementById("cardSaldoRestante").innerText = fmt(final_);
+        document.getElementById("inputSaldoPrevio").value      = dadosCache.saldoPrevio;
+
+        renderizarLinhasTabela(dadosCache.lista, dadosCache.saldoPrevio);
+        renderizarGraficos(tRec, tPag);
+      } catch(e) {
+        console.error(e);
+        alert("Erro ao carregar dados. Verifique sua conexão.");
+      }
+    }
+
+    function fmt(v) { return v.toLocaleString("pt-BR", {style:'currency', currency:'BRL'}); }
+
+    function renderizarLinhasTabela(lista, saldoPrevio) {
+  let html = '', acum = saldoPrevio;
+
+  html += `<tr class="bg-slate-100 border-b font-bold italic text-slate-600">
+    <td class="p-4 text-[10px]">---</td><td>---</td>
+    <td>SALDO INICIAL (PRÉVIO)</td>
+    <td class="text-right">-</td><td class="text-right">-</td>
+    <td class="text-right font-black text-slate-900">${fmt(saldoPrevio)}</td>
+    <td class="text-center">📌</td></tr>`;
+
+  lista.forEach(item => {
+    const r = parseFloat(item[3])||0, p = parseFloat(item[4])||0;
+    acum += r - p;
+    
+    // Formata a data para DD/MM/YYYY
+    let dataExibicao = item[1];
+    try {
+      // Tenta converter de vários formatos
+      if (item[1].includes('T')) {
+        // Formato ISO: 2026-01-26T08:00:00.000Z
+        const dataObj = new Date(item[1]);
+        dataExibicao = dataObj.toLocaleDateString('pt-BR');
+      } else if (item[1].includes('-')) {
+        // Formato YYYY-MM-DD
+        const partes = item[1].split('-');
+        dataExibicao = `${partes[2]}/${partes[1]}/${partes[0]}`;
+      } else if (item[1].includes('/')) {
+        // Já está no formato DD/MM/YYYY ou MM/DD/YYYY
+        if (item[1].split('/')[0].length === 4) {
+          // Formato YYYY/MM/DD
+          const partes = item[1].split('/');
+          dataExibicao = `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        // Se já for DD/MM/YYYY, mantém como está
+      }
+    } catch(e) {
+      console.warn("Erro ao formatar data:", item[1], e);
+    }
+    
+    html += `<tr class="border-b hover:bg-slate-50">
+      <td class="p-4 text-xs text-slate-400">${item[0]}</td>
+      <td class="font-bold">${dataExibicao}</td>
+      <td class="font-bold text-slate-700">${item[2]}</td>
+      <td class="text-right text-emerald-600">${fmt(r)}</td>
+      <td class="text-right text-rose-600">${fmt(p)}</td>
+      <td class="text-right font-black">${fmt(acum)}</td>
+      <td class="text-center flex justify-center gap-1 py-2">
+        <button onclick="abrirModalEditar('${item[0]}','${item[1]}','${item[2].replace(/'/g,"\\'")}',${r},${p})" class="p-2 text-blue-500 hover:scale-125 transition-transform" title="Editar">✏️</button>
+        <button onclick="excluirRegistro('${item[0]}')" class="p-2 text-rose-500 hover:scale-125 transition-transform" title="Excluir">🗑️</button>
+      </td></tr>`;
+  });
+  document.getElementById("corpoTabelaLivro").innerHTML = html;
+}
+
+    function renderizarGraficos(rec, pag) {
+      const ctxP = document.getElementById("graficoPizza").getContext("2d");
+      const ctxB = document.getElementById("graficoBarras").getContext("2d");
+      if (chartPizza)  chartPizza.destroy();
+      if (chartBarras) chartBarras.destroy();
+      chartPizza = new Chart(ctxP, {
+        type:"doughnut",
+        data:{ labels:["Entradas","Saídas"], datasets:[{ data:[rec,pag], backgroundColor:["#10b981","#ef4444"] }] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+      });
+      chartBarras = new Chart(ctxB, {
+        type:"bar",
+        data:{ labels:["Entradas","Saídas"], datasets:[{ label:"R$", data:[rec,pag], backgroundColor:["#10b981","#ef4444"], borderRadius:8 }] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+      });
+    }
+
+    // ─── LANÇAMENTO ─────────────────────────────────────────────
+    async function lancar() {
+  if (!usuarioLogado) return;
+  const btn  = document.getElementById("btnLancar");
+  const tipo = document.getElementById("tipoOperacao").value;
+  const valor= document.getElementById("valor").value;
+  
+  // Pega a data no formato YYYY-MM-DD
+  const dataInput = document.getElementById("data").value;
+  
+  // Converte para DD/MM/YYYY
+  const partes = dataInput.split('-');
+  const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+  
+  const payload = {
+    action:"lancar", 
+    usuario:usuarioLogado.unidade,
+    desc: document.getElementById("desc").value,
+    data: dataFormatada, // Usa o formato brasileiro
+    recebido: tipo==="recebido"? valor:0,
+    pago:     tipo==="pago"   ? valor:0
+  };
+  
+  if (!payload.desc || !valor || !payload.data) return alert("Preencha todos os campos!");
+  btn.innerText = "SALVANDO..."; btn.disabled = true;
+  try {
+    await fetch(API_URL, { method:"POST", body:JSON.stringify(payload) });
+    document.getElementById("desc").value  = "";
+    document.getElementById("valor").value = "";
+    alert("✅ Lançamento registrado com sucesso!");
+    atualizarTabela();
+    mudarTab("historico", document.querySelectorAll(".sidebar-item")[2]);
+  } catch(e) { 
+    console.error("Erro ao salvar:", e);
+    alert("❌ Erro ao salvar lançamento!"); 
+  }
+  finally { btn.innerText="SALVAR NO LIVRO"; btn.disabled=false; }
+}
+
+    // ─── EXCLUIR ────────────────────────────────────────────────
+    async function excluirRegistro(id) {
+      if (!usuarioLogado) return;
+      if (!confirm("⚠️ Deseja realmente excluir este registro?")) return;
+      try {
+        await fetch(`${API_URL}?senha=${usuarioLogado.senha}&usuario=${usuarioLogado.unidade}&action=excluir&id=${id}`);
+        alert("✅ Registro excluído com sucesso!");
+        atualizarTabela();
+      } catch(e) { alert("❌ Erro ao excluir registro!"); }
+    }
+
+    // ─── MODAL EDITAR ───────────────────────────────────────────
+   function abrirModalEditar(id, data, desc, recebido, pago) {
+  // Converte a data para YYYY-MM-DD (formato do input date)
+  let dataParaInput = data;
+  try {
+    if (data.includes('T')) {
+      // Formato ISO
+      const dataObj = new Date(data);
+      dataParaInput = dataObj.toISOString().split('T')[0];
+    } else if (data.includes('/')) {
+      // Formato DD/MM/YYYY ou MM/DD/YYYY
+      const partes = data.split('/');
+      if (partes[0].length === 2) {
+        // DD/MM/YYYY → YYYY-MM-DD
+        dataParaInput = `${partes[2]}-${partes[1]}-${partes[0]}`;
+      } else if (partes[0].length === 4) {
+        // YYYY/MM/DD → YYYY-MM-DD
+        dataParaInput = `${partes[0]}-${partes[1]}-${partes[2]}`;
+      }
+    }
+  } catch(e) {
+    console.warn("Erro ao converter data para modal:", data, e);
+  }
+  
+  document.getElementById("editId").value    = id;
+  document.getElementById("editData").value  = dataParaInput;
+  document.getElementById("editDesc").value  = desc;
+  document.getElementById("editTipo").value  = recebido > 0 ? "recebido" : "pago";
+  document.getElementById("editValor").value = recebido > 0 ? recebido : pago;
+  document.getElementById("modalEditar").classList.add("active");
+}
+    function fecharModalEditar() {
+      document.getElementById("modalEditar").classList.remove("active");
+    }
+
+    // Fecha modal ao clicar fora
+    document.getElementById("modalEditar").addEventListener("click", function(e) {
+      if (e.target === this) fecharModalEditar();
+    });
+
+    async function salvarEditar() {
+  const btn   = document.getElementById("btnSalvarEditar");
+  const id    = document.getElementById("editId").value;
+  const dataInput = document.getElementById("editData").value;
+  const desc  = document.getElementById("editDesc").value;
+  const tipo  = document.getElementById("editTipo").value;
+  const valor = document.getElementById("editValor").value;
+
+  if (!dataInput || !desc || !valor) return alert("Preencha todos os campos!");
+
+  // Converte para DD/MM/YYYY
+  const partes = dataInput.split('-');
+  const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+
+  btn.innerText = "SALVANDO..."; btn.disabled = true;
+
+  const payload = {
+    action:   "editar",
+    usuario:  usuarioLogado.unidade,
+    id:       id,
+    data:     dataFormatada, // Usa formato brasileiro
+    desc:     desc,
+    recebido: tipo === "recebido" ? valor : 0,
+    pago:     tipo === "pago"     ? valor : 0
+  };
+
+  try {
+    await fetch(API_URL, { method:"POST", body:JSON.stringify(payload) });
+    alert("✅ Registro editado com sucesso!");
+    fecharModalEditar();
+    atualizarTabela();
+  } catch(e) { 
+    console.error("Erro ao editar:", e);
+    alert("❌ Erro ao editar registro!"); 
+  }
+  finally { btn.innerText="SALVAR ALTERAÇÕES"; btn.disabled=false; }
+}
+
+    // ─── CONFIGURAÇÕES (saldo prévio) ───────────────────────────
+    async function salvarConfiguracoes() {
+      if (!usuarioLogado) return;
+      const saldoNovo       = document.getElementById("inputSaldoPrevio").value;
+      const senhaConfirmacao= document.getElementById("senhaConfirmacao").value;
+      const msgErro         = document.getElementById("msgErroConfig");
+      const msgSucesso      = document.getElementById("msgSucessoConfig");
+      const btn             = document.getElementById("btnSalvarConfig");
+
+      msgErro.classList.add("hidden"); msgSucesso.classList.add("hidden");
+
+      if (!saldoNovo || saldoNovo==="") { msgErro.querySelector("p").innerText="❌ Digite o novo saldo inicial!"; msgErro.classList.remove("hidden"); return; }
+      if (!senhaConfirmacao)            { msgErro.querySelector("p").innerText="❌ Digite a senha de confirmação!"; msgErro.classList.remove("hidden"); return; }
+      if (senhaConfirmacao !== usuarioLogado.senha) {
+        msgErro.querySelector("p").innerText="❌ Senha de confirmação incorreta!";
+        msgErro.classList.remove("hidden");
+        document.getElementById("senhaConfirmacao").value=""; return;
+      }
+      if (!confirm(`⚠️ ATENÇÃO!\n\nAltera saldo inicial de:\n${document.getElementById("cardPrevio").innerText}\n\nPara:\n${fmt(parseFloat(saldoNovo))}\n\nDeseja continuar?`)) return;
+
+      btn.innerText="SALVANDO..."; btn.disabled=true;
+      try {
+        await fetch(API_URL, { method:"POST", body:JSON.stringify({ action:"salvarConfig", usuario:usuarioLogado.unidade, salario:saldoNovo }) });
+        document.getElementById("senhaConfirmacao").value="";
+        msgSucesso.classList.remove("hidden");
+        await atualizarTabela();
+        setTimeout(()=>msgSucesso.classList.add("hidden"),3000);
+      } catch(e) { msgErro.querySelector("p").innerText="❌ Erro ao atualizar!"; msgErro.classList.remove("hidden"); }
+      finally { btn.innerText="ATUALIZAR SALDO INICIAL"; btn.disabled=false; }
+    }
+
+    // ─── FILTRO PDF (mês / período) ─────────────────────────────
+    function popularFiltroMesAno() {
+      const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+      const selMes = document.getElementById("filtroMes");
+      const selAno = document.getElementById("filtroMesAno");
+      const hoje   = new Date();
+
+      meses.forEach((m,i) => {
+        const opt = document.createElement("option");
+        opt.value = i; opt.textContent = m;
+        if (i === hoje.getMonth()) opt.selected = true;
+        selMes.appendChild(opt);
+      });
+
+      for (let a = hoje.getFullYear(); a >= 2020; a--) {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        if (a === hoje.getFullYear()) opt.selected = true;
+        selAno.appendChild(opt);
+      }
+    }
+
+    function atualizarFiltroPeriodo() {
+      const tipo = document.getElementById("filtroTipo").value;
+      document.getElementById("wrapFiltroMes").style.display        = tipo==="mes"    ? "" : "none";
+      document.getElementById("wrapFiltroMesAno").style.display     = tipo==="mes"    ? "" : "none";
+      document.getElementById("wrapFiltroPeriodoInicio").style.display = tipo==="periodo" ? "" : "none";
+      document.getElementById("wrapFiltroPeriodoFim").style.display    = tipo==="periodo" ? "" : "none";
+    }
+
+    // retorna {inicio: Date, fim: Date} com base nos filtros
+    function obterPeriodoFiltro() {
+      const tipo = document.getElementById("filtroTipo").value;
+      if (tipo === "mes") {
+        const mes = parseInt(document.getElementById("filtroMes").value);
+        const ano = parseInt(document.getElementById("filtroMesAno").value);
+        return {
+          inicio: new Date(ano, mes, 1),
+          fim:    new Date(ano, mes + 1, 0) // último dia do mês
+        };
+      }
+      // periodo
+      const i = document.getElementById("filtroPeriodoInicio").value;
+      const f = document.getElementById("filtroPeriodoFim").value;
+      if (!i || !f) return null;
+      return { inicio: new Date(i+"T00:00:00"), fim: new Date(f+"T23:59:59") };
+    }
+
+    // ─── GERAR PDF ──────────────────────────────────────────────
+    async function gerarPDFLivroCaixa() {
+  if (!usuarioLogado) return;
+
+  const periodo = obterPeriodoFiltro();
+  if (!periodo) return alert("⚠️ Selecione um período válido (De / Até)!");
+
+  // Busca dados frescos
+  let lista, saldoPrevio;
+  try {
+    const res = await fetch(`${API_URL}?senha=${usuarioLogado.senha}&usuario=${usuarioLogado.unidade}&action=ler`);
+    const data = await res.json();
+    
+    lista = data.lista || [];
+    saldoPrevio = parseFloat(data.saldoPrevio) || 0;
+    
+    if (lista.length === 0) {
+      return alert("⚠️ Não há registros para o período selecionado!");
+    }
+  } catch(e) { 
+    console.error("Erro ao buscar dados:", e);
+    return alert("❌ Erro ao buscar dados para o PDF."); 
+  }
+
+  // Filtra lista pelo período
+  const filtrada = lista.filter(item => {
+    if (!item[1]) return false;
+    
+    try {
+      let dataRegistro;
+      if (item[1].includes('T')) {
+        dataRegistro = new Date(item[1]);
+      } else if (item[1].includes('/')) {
+        const partes = item[1].split('/');
+        // Tenta DD/MM/YYYY
+        if (partes[0].length === 2) {
+          dataRegistro = new Date(partes[2], partes[1] - 1, partes[0]);
+        } else {
+          // Tenta YYYY/MM/DD
+          dataRegistro = new Date(partes[0], partes[1] - 1, partes[2]);
+        }
+      } else if (item[1].includes('-')) {
+        dataRegistro = new Date(item[1]);
+      }
+      
+      if (!dataRegistro || isNaN(dataRegistro.getTime())) return false;
+      
+      // Remove horas para comparação
+      const dataComparar = new Date(dataRegistro.getFullYear(), dataRegistro.getMonth(), dataRegistro.getDate());
+      
+      return dataComparar >= periodo.inicio && dataComparar <= periodo.fim;
+    } catch(e) {
+      console.warn("Erro ao filtrar item:", item, e);
+      return false;
+    }
+  });
+
+  if (filtrada.length === 0) {
+    return alert(`⚠️ Não foram encontrados registros para o período:\nDe: ${periodo.inicio.toLocaleDateString('pt-BR')}\nAté: ${periodo.fim.toLocaleDateString('pt-BR')}`);
+  }
+
+  // Ordena por data (mais antigo primeiro)
+  filtrada.sort((a, b) => {
+    const dateA = new Date(a[1]);
+    const dateB = new Date(b[1]);
+    return dateA - dateB;
+  });
+
+  // Calcula totais
+  let tRec = 0, tPag = 0;
+  filtrada.forEach(i => { 
+    tRec += parseFloat(i[3]) || 0; 
+    tPag += parseFloat(i[4]) || 0; 
+  });
+  const mov = tRec - tPag;
+  const final_ = saldoPrevio + mov;
+
+  // ── MONTA PDF ──
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  // Configura fonte compatível com acentos
+  doc.setFont('helvetica');
+
+  // Função de formatação de moeda CORRIGIDA
+  const fmtMoeda = v => {
+    const num = parseFloat(v);
+    if (isNaN(num)) return 'R$ 0,00';
+    const abs = Math.abs(num);
+    // Formato correto: R$ 1.234,56
+    const partes = abs.toFixed(2).split('.');
+    const inteiro = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (num < 0 ? '-' : '') + 'R$ ' + inteiro + ',' + partes[1];
+  };
+
+  // Título
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`LIVRO DE CAIXA - ${usuarioLogado.nome.toUpperCase()}`, 105, 20, { align: 'center' });
+
+  // Período
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  const fmtDate = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ de /g, ' ');
+  doc.text(`Período: ${fmtDate(periodo.inicio)} até ${fmtDate(periodo.fim)}`, 105, 28, { align: 'center' });
+
+  // Prepara corpo da tabela
+  const body = [];
+  
+  // Saldo prévio
+  body.push(['', 'SALDO PRÉVIO', '', '', fmtMoeda(saldoPrevio)]);
+
+  let acum = saldoPrevio;
+  filtrada.forEach(item => {
+    const r = parseFloat(item[3]) || 0;
+    const p = parseFloat(item[4]) || 0;
+    acum += r - p;
+    
+    // Formata data para exibição
+    let dataFormatada = item[1];
+    try {
+      if (item[1].includes('T')) {
+        const d = new Date(item[1]);
+        dataFormatada = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ de /g, ' ');
+      } else if (item[1].includes('/')) {
+        const partes = item[1].split('/');
+        if (partes[0].length === 2) {
+          // DD/MM/YYYY
+          const d = new Date(partes[2], partes[1] - 1, partes[0]);
+          dataFormatada = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ de /g, ' ');
+        }
+      }
+    } catch(e) {
+      // Mantém o formato original se der erro
+    }
+    
+    body.push([
+      dataFormatada,
+      item[2] || '-',
+      r > 0 ? fmtMoeda(r).replace('R$ ', '') : '',
+      p > 0 ? fmtMoeda(p).replace('R$ ', '') : '',
+      fmtMoeda(acum)
+    ]);
+  });
+
+  // Linha em branco
+  body.push(['', '', '', '', '']);
+  
+  // Totais
+  body.push(['', 'TOTAL RECEBIDO', fmtMoeda(tRec).replace('R$ ', ''), '', '']);
+  body.push(['', 'TOTAL PAGO', '', fmtMoeda(tPag).replace('R$ ', ''), '']);
+  body.push(['', 'SALDO MOVIMENTAÇÃO', '', '', fmtMoeda(mov)]);
+  body.push(['', 'SALDO PRÉVIO', '', '', fmtMoeda(saldoPrevio)]);
+  body.push(['', 'SALDO FINAL EM CAIXA', '', '', fmtMoeda(final_)]);
+
+  // Gera tabela
+  doc.autoTable({
+    startY: 35,
+    head: [['DATA', 'DESCRIÇÃO', 'RECEBIDO (R$)', 'PAGO (R$)', 'SALDO (R$)']],
+    body: body,
+    theme: 'grid',
+    headStyles: { 
+      fillColor: [227, 29, 26], 
+      textColor: [255, 255, 255], 
+      fontStyle: 'bold', 
+      halign: 'center', 
+      fontSize: 10,
+      font: 'helvetica'
+    },
+    bodyStyles: { 
+      fontSize: 9, 
+      cellPadding: 3,
+      font: 'helvetica'
+    },
+    styles: {
+      font: 'helvetica'
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 25 },
+      1: { halign: 'left', cellWidth: 70 },
+      2: { halign: 'right', cellWidth: 28 },
+      3: { halign: 'right', cellWidth: 28 },
+      4: { halign: 'right', cellWidth: 32 }
+    },
+    didParseCell: function(data) {
+      // Saldo prévio
+      if (data.section === 'body' && data.row.index === 0) {
+        data.cell.styles.fillColor = [240, 240, 240];
+        data.cell.styles.fontStyle = 'bold';
+      }
+      // Totais (últimas 5 linhas)
+      if (data.section === 'body' && data.row.index >= body.length - 5) {
+        data.cell.styles.fillColor = [255, 255, 0];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  // Data de geração
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, doc.internal.pageSize.height - 10);
+
+  // Nome do arquivo
+  const pad = n => String(n).padStart(2, '0');
+  const nome = `Livro_Caixa_${usuarioLogado.nome.replace(/\s/g, '_')}_${periodo.inicio.getFullYear()}${pad(periodo.inicio.getMonth() + 1)}${pad(periodo.inicio.getDate())}_a_${periodo.fim.getFullYear()}${pad(periodo.fim.getMonth() + 1)}${pad(periodo.fim.getDate())}.pdf`;
+  
+  // Salva o PDF
+  doc.save(nome);
+  alert(`✅ PDF gerado com sucesso!\n${filtrada.length} registros incluídos.`);
+}
+  </script>
+</body>
+</html>
