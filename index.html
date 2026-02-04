@@ -24,43 +24,64 @@
      LOGIN SCREEN
      ══════════════════════════════════════════════════ -->
   <div id="telaLogin">
-    <div class="login-card">
-      <div class="login-logo">
-        <div class="badge"><span>SUPERVILA</span></div>
-        <h2>Controle de Caixa</h2>
-        <p>Entre com suas credenciais</p>
-      </div>
-      <div id="loginForm">
-        <div class="field">
-          <label>Usuário</label>
-          <input type="text" id="inputUsuario" placeholder="Digite seu usuário" autocomplete="off" onkeypress="
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="badge"><span>SUPERVILA</span></div>
+
+
+          <div class="login-logo">
+  <img src="assets/logo_supervila.png" alt="Logo Supervila" style="width: 120px; height: auto; margin-bottom: 10px;">
+</div>
+   
+          <h2>Controle de Caixa</h2>
+          <p>Entre com suas credenciais</p>
+        </div>
+        <div id="loginForm">
+          <div class="field">
+            <label>Usuário</label>
+            <input
+              type="text"
+              id="inputUsuario"
+              placeholder="Digite seu usuário"
+              autocomplete="off"
+              onkeypress="
                 if (event.key === 'Enter')
                   document.getElementById('inputSenha').focus();
-              " />
-        </div>
-        <div class="field">
-          <label>Senha</label>
-          <div class="pwd-wrap">
-            <input type="password" id="inputSenha" placeholder="Digite sua senha" autocomplete="off"
-              onkeypress="if (event.key === 'Enter') verificarLogin();" />
-            <button type="button" class="pwd-toggle" onclick="toggleSenha('inputSenha', this)">
-              👁️
-            </button>
+              "
+            />
           </div>
+          <div class="field">
+            <label>Senha</label>
+            <div class="pwd-wrap">
+              <input
+                type="password"
+                id="inputSenha"
+                placeholder="Digite sua senha"
+                autocomplete="off"
+                onkeypress="if (event.key === 'Enter') verificarLogin();"
+              />
+              <button
+                type="button"
+                class="pwd-toggle"
+                onclick="toggleSenha('inputSenha', this)"
+              >
+                👁️
+              </button>
+            </div>
+          </div>
+          <div class="msg-erro" id="msgErro">
+            ❌ Usuário ou senha inválidos!
+          </div>
+          <button class="btn-login" onclick="verificarLogin()">
+            Entrar no Sistema
+          </button>
         </div>
-        <div class="msg-erro" id="msgErro">
-          ❌ Usuário ou senha inválidos!
+        <div class="spinner-wrap" id="carregando">
+          <div class="spinner"></div>
+          <p>Verificando credenciais…</p>
         </div>
-        <button class="btn-login" onclick="verificarLogin()">
-          Entrar no Sistema
-        </button>
-      </div>
-      <div class="spinner-wrap" id="carregando">
-        <div class="spinner"></div>
-        <p>Verificando credenciais…</p>
       </div>
     </div>
-  </div>
 
   <!-- ══════════════════════════════════════════════════
      APP
@@ -69,17 +90,19 @@
     <!-- Top bar (mobile only) -->
     <div class="topbar">
       <div class="logo-sm">
-        <div class="badge-sm"><span>SUPERVILA</span></div>
-        <div class="unidade-sm" id="topUnidade">—</div>
-      </div>
+   <img src="assets/logo_supervila.png" alt="Supervila" class="logo-top">
+  <div class="unidade-sm" id="topUnidade">—</div>
+</div>
+
       <button class="btn-logout" onclick="fazerLogout()">🚪</button>
     </div>
 
     <!-- Sidebar (desktop only) -->
     <aside class="sidebar" style="display: none">
       <div class="logo-area">
-        <div class="badge"><span>SUPERVILA</span></div>
-        <div class="unit-badge">
+  <img src="assets/logo_supervila.png" alt="Supervila" class="logo-sidebar">
+  <div class="unit-badge">
+
           <div class="lbl2">Unidade</div>
           <div class="val2" id="sideUnidade">—</div>
         </div>
@@ -109,7 +132,7 @@
 
     <!-- Scrollable content -->
     <div class="content-scroll">
-      <!-- ── DASHBOARD ── -->
+      ── DASHBOARD ──
       <div class="page active" id="tab-dash">
         <div class="greeting">
           <h1>Olá, <span id="nomeOperador">Operador</span> 👋</h1>
@@ -149,7 +172,7 @@
         </div>
       </div>
 
-      <!-- ── NOVO LANÇAMENTO ── -->
+     
       <!-- ── NOVO LANÇAMENTO ── -->
       <div class="page" id="tab-lancar">
         <div class="page-header"><span class="bar"></span> Novo Registro</div>
@@ -230,80 +253,116 @@
         <div id="libroCards"></div>
       </div>
 
+    
       <!-- ── CONFIGURAÇÕES ── -->
-      <div class="page" id="tab-config">
-        <div class="config-card">
-          <div class="icon-wrap">⚙️</div>
-          <h3>Saldo Inicial</h3>
-          <p class="sub">⚠️ Requer senha de autorização</p>
-          <div class="field">
-            <label>Novo Saldo Inicial</label>
-            <input type="number" step="0.01" id="inputSaldoPrevio" placeholder="0,00" />
+<div class="page" id="tab-config">
+  <div class="config-header">
+    <div class="page-header">
+      <span class="bar"></span> Configurações
+    </div>
+    <p class="config-subtitle">Gerencie as configurações do sistema</p>
+  </div>
+
+  <div class="config-grid">
+    <!-- SEÇÃO: SALDO INICIAL -->
+    <div class="config-section">
+      <div class="section-header">
+        <div class="section-icon">💰</div>
+        <div>
+          <h3 class="section-title">Saldo Inicial</h3>
+          <p class="section-subtitle">⚠️ Requer senha de autorização</p>
+        </div>
+      </div>
+
+      <div class="config-form">
+        <div class="field-group">
+          <label class="field-label">Novo Saldo Inicial (R$)</label>
+          <div class="input-with-prefix">
+            <span class="input-prefix">R$</span>
+            <input type="number" step="0.01" id="inputSaldoPrevio" placeholder="0,00" class="field-input" />
           </div>
-          <div class="field">
-            <label>🔐 Senha de Confirmação</label>
-            <div class="pwd-wrap">
-              <input type="password" id="senhaConfirmacao" placeholder="Senha de autorização"
-                onkeypress="if (event.key === 'Enter') salvarConfiguracoes();" />
-              <button type="button" class="pwd-toggle" onclick="toggleSenha('senhaConfirmacao', this)">
-                👁️
-              </button>
-            </div>
+        </div>
+        
+        <div class="field-group">
+          <label class="field-label">🔐 Senha de Confirmação</label>
+          <div class="pwd-wrap">
+            <input type="password" id="senhaConfirmacao" placeholder="Senha de autorização" class="field-input"
+              onkeypress="if (event.key === 'Enter') salvarConfiguracoes();" />
+            <button type="button" class="pwd-toggle" onclick="toggleSenha('senhaConfirmacao', this)">
+              👁️
+            </button>
           </div>
+        </div>
+        
+        <div class="config-messages">
           <div class="msg-erro" id="msgErroConfig"></div>
-          <div class="msg-sucesso" id="msgSucessoConfig">
+          <div class="msg-sucesso" id="msgSucessoConfig" style="display: none;">
             ✅ Saldo atualizado com sucesso!
           </div>
-          <button class="btn-dark" id="btnSalvarConfig" onclick="salvarConfiguracoes()">
-            Atualizar Saldo
-          </button>
+        </div>
+        
+        <button class="btn-save" id="btnSalvarConfig" onclick="salvarConfiguracoes()">
+          <span class="btn-icon">💾</span>
+          <span class="btn-text">Atualizar Saldo</span>
+        </button>
+      </div>
+    </div>
 
-          <!-- NOVA SEÇÃO: CADASTRO DE DESCRIÇÕES -->
-          <div style="margin-top: 40px; border-top: 1px solid var(--slate-200); padding-top: 24px;">
-            <h3
-              style="font-size: 17px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span style="width: 4px; height: 22px; background: var(--red); border-radius: 2px;"></span>
-              Cadastro de Descrições
-            </h3>
+    <!-- SEÇÃO: CADASTRO DE DESCRIÇÕES -->
+    <div class="config-section">
+      <div class="section-header">
+        <div class="section-icon">📝</div>
+        <div>
+          <h3 class="section-title">Descrições</h3>
+          <p class="section-subtitle">Gerenciar descrições dos lançamentos</p>
+        </div>
+      </div>
 
-            <div class="field">
-              <label>Nova Descrição</label>
-              <input type="text" id="novaDescricao" placeholder="Ex: Pagamento de fornecedor" />
-            </div>
-
-            <div class="msg-erro" id="msgErroDescricao" style="display: none;"></div>
-            <div class="msg-sucesso" id="msgSucessoDescricao" style="display: none;"></div>
-
-            <button class="btn-primary" onclick="cadastrarDescricao()" style="margin-top: 12px;">
-              <span class="btn-icon">💾</span>
-              <span class="btn-text">Salvar Descrição</span>
+      <div class="config-form">
+        <div class="field-group">
+          <label class="field-label">Nova Descrição</label>
+          <div class="input-with-button">
+            <input type="text" id="novaDescricao" placeholder="Ex: Pagamento de fornecedor" class="field-input" />
+            <button class="btn-add" onclick="cadastrarDescricao()" title="Adicionar descrição">
+              <span>➕</span>
             </button>
-
-            <!-- LISTA DE DESCRIÇÕES CADASTRADAS -->
-            <div style="margin-top: 24px;">
-              <h4 style="font-size: 13px; font-weight: 700; color: var(--slate-500); margin-bottom: 12px;">
-                Descrições Cadastradas
-              </h4>
-              <div id="listaDescricoes"
-                style="max-height: 200px; overflow-y: auto; background: var(--slate-50); border-radius: 12px; padding: 12px;">
-                <!-- As descrições serão carregadas aqui -->
-              </div>
-            </div>
           </div>
+        </div>
 
-          <div class="info-box">
-            <div class="info-title">ℹ️ Informação</div>
-            <p>
-              O saldo inicial representa o valor em caixa antes dos lançamentos. Requer senha para segurança.
-              <br><br>
-              <strong>Descrições:</strong> Cadastre aqui as descrições que aparecerão como sugestão ao fazer
-              lançamentos.
-            </p>
+        <div class="config-messages">
+          <div class="msg-erro" id="msgErroDescricao" style="display: none;"></div>
+          <div class="msg-sucesso" id="msgSucessoDescricao" style="display: none;"></div>
+        </div>
+
+        <div class="descricoes-container">
+          <div class="container-header">
+            <h4>Descrições Cadastradas</h4>
+            <span class="badge-count" id="contadorDescricoes">0</span>
+          </div>
+          <div id="listaDescricoes" class="descricoes-list">
+            <!-- As descrições serão carregadas aqui -->
           </div>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- SEÇÃO: INFORMAÇÕES DO SISTEMA -->
+  <div class="info-card">
+    <div class="info-header">
+      <div class="info-icon">ℹ️</div>
+      <h4>Informações do Sistema</h4>
+    </div>
+    <div class="info-content">
+      <p><strong>Saldo Inicial:</strong> Valor em caixa antes dos lançamentos. A alteração requer senha para segurança.</p>
+      <p><strong>Descrições:</strong> Cadastre descrições que aparecerão como sugestão ao fazer lançamentos.</p>
+      <div class="info-footer">
+        <span class="version">Versão 1.0.0</span>
+        <span class="status">● Sistema Operacional</span>
+      </div>
+    </div>
+  </div>
+</div>
     <!-- Bottom nav (mobile only) -->
     <nav class="bottom-nav">
       <button class="nav-btn active" onclick="mudarTab('dash', this)">
