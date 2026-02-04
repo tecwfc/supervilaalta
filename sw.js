@@ -1,4 +1,4 @@
-const CACHE_NAME = 'supervila-v1';
+const CACHE_NAME = 'supervila-v2';
 const assets = [
   './',
   './index.html',
@@ -24,3 +24,4 @@ self.addEventListener('fetch', event => {
     })
   );
 });
+
