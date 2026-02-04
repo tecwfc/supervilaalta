@@ -3,12 +3,12 @@
   "name": "Supervila – Controle de Caixa",
   "icons": [
     {
-      "src": "https://via.placeholder.com/192",
+      "src": "assets/logo_supervila.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://via.placeholder.com/512",
+      "src": "assets/logo_supervila.png",
       "type": "image/png",
       "sizes": "512x512"
     }
