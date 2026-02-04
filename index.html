@@ -418,15 +418,16 @@
     </div>
   </div>
 
+  <script src="script.js"></script>
+ 
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(() => console.log("App Pronto para instalar!"))
       .catch(err => console.log("Erro no registro do SW:", err));
   }
-</script>
-
-  <script src="script.js"></script>
+</script>   
 </body>
 </html>
+
 
