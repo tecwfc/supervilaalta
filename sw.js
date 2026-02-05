@@ -1,4 +1,4 @@
-const CACHE_NAME = 'supervila-v2';
+const CACHE_NAME = 'supervila-v3';
 const assets = [
   './',
   './index.html',
