@@ -7,6 +7,240 @@ const CREDENCIAIS_FIXAS = {
   admin: { senha: "admin10", nome: "admin" },
 };
 
+// ─── LOGIN ──────────────────────────────────────────────────────────────
+async function verificarLogin() {
+  const empresa = document.getElementById('inputEmpresa').value;
+  const usuario = document.getElementById('inputUsuario').value.toLowerCase().trim();
+  const senha = document.getElementById('inputSenha').value;
+  const msgErro = document.getElementById('msgErro');
+  const form = document.getElementById('loginForm');
+
+  msgErro.classList.remove('show');
+
+  // Validação básica
+  if (!usuario || !senha) {
+    msgErro.innerText = '❌ Preencha usuário e senha!';
+    msgErro.classList.add('show');
+    return;
+  }
+
+  // Mostrar loading
+  form.style.pointerEvents = 'none';
+  form.classList.add('hidden');
+  document.getElementById('carregando').classList.add('show');
+
+  try {
+    // Tentar login via API
+    const res = await fetch(
+      `${API_URL}?action=login&usuario=${encodeURIComponent(usuario)}&senha=${encodeURIComponent(senha)}`
+    );
+    const data = await res.json();
+
+    if (data && data.sucesso) {
+      // Login via API bem-sucedido
+      usuarioLogado = {
+        usuario: data.usuario || usuario,
+        senha: senha,
+        nome: data.empresa || usuario,
+        empresaId: empresa // Adicionar ID da empresa
+      };
+
+      localStorage.setItem('supervilaSessao', JSON.stringify(usuarioLogado));
+      entrarNoApp();
+    } else {
+      // Tentar credenciais locais
+      verificarCredenciaisLocais(usuario, senha, empresa);
+    }
+  } catch (e) {
+    console.error('Erro na API, tentando credenciais locais:', e);
+    verificarCredenciaisLocais(usuario, senha, empresa);
+  }
+}
+
+// Modificar a função verificarCredenciaisLocais
+function verificarCredenciaisLocais(usuario, senha, empresaId) {
+  const empresa = empresasDisponiveis.find(e => e.id === empresaId);
+  
+  if (empresa && empresa.senha === senha) {
+    // Login local bem-sucedido
+    usuarioLogado = {
+      usuario: empresaId,
+      senha: senha,
+      nome: empresa.nome,
+      empresaId: empresaId
+    };
+
+    localStorage.setItem('supervilaSessao', JSON.stringify(usuarioLogado));
+    entrarNoApp();
+  } else {
+    // Credenciais inválidas
+    document.getElementById('carregando').classList.remove('show');
+    const form = document.getElementById('loginForm');
+    form.classList.remove('hidden');
+    form.style.pointerEvents = '';
+
+    const msgErro = document.getElementById('msgErro');
+    msgErro.innerText = '❌ Usuário ou senha inválidos!';
+    msgErro.classList.add('show');
+
+    document.getElementById('inputSenha').value = '';
+    document.getElementById('inputSenha').focus();
+  }
+}
+
+
+// Função para troca rápida entre empresas (se já conhece a senha)
+function trocaRapidaEmpresa(novaEmpresaId) {
+  const empresa = empresasDisponiveis.find(e => e.id === novaEmpresaId);
+  if (!empresa) return false;
+  
+  if (usuarioLogado && usuarioLogado.senha === empresa.senha) {
+    // Se já tem a senha salva, troca direto
+    usuarioLogado = {
+      usuario: novaEmpresaId,
+      senha: empresa.senha,
+      nome: empresa.nome,
+      empresaId: novaEmpresaId
+    };
+    
+    localStorage.setItem('supervilaSessao', JSON.stringify(usuarioLogado));
+    location.reload();
+    return true;
+  }
+  
+  return false;
+}
+function verificarCredenciaisLocais(usuario, senha) {
+  if (CREDENCIAIS_FIXAS[usuario] && CREDENCIAIS_FIXAS[usuario].senha === senha) {
+    // Login local bem-sucedido
+    usuarioLogado = {
+      usuario: usuario,
+      senha: senha,
+      nome: CREDENCIAIS_FIXAS[usuario].nome,
+    };
+
+    localStorage.setItem("supervilaSessao", JSON.stringify(usuarioLogado));
+    entrarNoApp();
+  } else {
+    // Credenciais inválidas
+    document.getElementById("carregando").classList.remove("show");
+    const form = document.getElementById("loginForm");
+    form.classList.remove("hidden");
+    form.style.pointerEvents = "";
+
+    const msgErro = document.getElementById("msgErro");
+    msgErro.innerText = "❌ Usuário ou senha inválidos!";
+    msgErro.classList.add("show");
+
+    document.getElementById("inputSenha").value = "";
+    document.getElementById("inputSenha").focus();
+  }
+}
+
+
+// ─── GESTÃO DE MULTI-EMPRESA ──────────────────────────────────────────────
+let empresasDisponiveis = [
+  { id: 'supervilaalta', nome: 'Supervila Alta', senha: 'S0l@2003' },
+  { id: 'supervilamuriti', nome: 'Supervila Muriti', senha: 'Ers626637' },
+  { id: 'admin', nome: 'Administrador', senha: 'admin10' }
+];
+
+function onEmpresaChange() {
+  const empresaSelect = document.getElementById('inputEmpresa');
+  const usuarioInput = document.getElementById('inputUsuario');
+  
+  if (empresaSelect.value) {
+    // Preencher automaticamente o usuário com o ID da empresa selecionada
+    usuarioInput.value = empresaSelect.value;
+    usuarioInput.readOnly = true;
+    usuarioInput.style.background = '#f1f5f9';
+    
+    // Focar na senha
+    document.getElementById('inputSenha').focus();
+  } else {
+    usuarioInput.readOnly = false;
+    usuarioInput.style.background = '';
+    usuarioInput.value = '';
+  }
+}
+
+function mostrarSelecaoEmpresa() {
+  // Esconder o link de trocar empresa
+  document.getElementById('trocarEmpresaLink').style.display = 'none';
+  
+  // Mostrar o seletor de empresa
+  const empresaSelect = document.querySelector('.field[style*="display: none"]');
+  if (empresaSelect) {
+    empresaSelect.style.display = 'block';
+  }
+}
+
+function mostrarTrocarEmpresa() {
+  if (confirm('Deseja trocar para outra empresa?\nVocê precisará fazer login novamente.')) {
+    // Limpar apenas a empresa atual, mantendo usuário/senha se quiser
+    localStorage.removeItem('supervilaSessao');
+    usuarioLogado = null;
+    
+    // Mostrar tela de login com foco no seletor de empresa
+    document.getElementById('telaLogin').classList.remove('hidden');
+    document.getElementById('app').classList.remove('show');
+    
+    // Resetar formulário
+    document.getElementById('inputEmpresa').value = '';
+    document.getElementById('inputUsuario').value = '';
+    document.getElementById('inputUsuario').readOnly = false;
+    document.getElementById('inputUsuario').style.background = '';
+    document.getElementById('inputSenha').value = '';
+    
+    // Mostrar link de trocar empresa (se já estiver logado antes)
+    document.getElementById('trocarEmpresaLink').style.display = 'block';
+  }
+}
+
+// Modificar a função entrarNoApp para incluir o nome da empresa
+function entrarNoApp() {
+  // Ocultar tela de login
+  document.getElementById('telaLogin').classList.add('hidden');
+  document.getElementById('app').classList.add('show');
+  
+  // Esconder o link de trocar empresa (já está dentro do app)
+  document.getElementById('trocarEmpresaLink').style.display = 'none';
+  
+  // Atualizar informações do usuário
+  const nomeEmpresa = empresasDisponiveis.find(e => e.id === usuarioLogado.usuario)?.nome || usuarioLogado.nome;
+  
+  document.getElementById('txtUnidade').innerText = nomeEmpresa;
+  document.getElementById('topUnidade').innerText = nomeEmpresa;
+  document.getElementById('sideUnidade').innerText = nomeEmpresa;
+  document.getElementById('nomeEmpresaAtual').innerText = nomeEmpresa; // Novo elemento
+  document.getElementById('sideUsuario').innerText = usuarioLogado.usuario;
+  document.getElementById('nomeOperador').innerText = nomeEmpresa.split(' ')[1] || nomeEmpresa.split(' ')[0];
+
+  // Configurar atalhos de teclado
+  configurarAtalhosLancamento();
+
+  // Carregar dados
+  setTimeout(() => {
+    carregarDescricoesSelect();
+    carregarConfiguracoes();
+    atualizarTabela();
+  }, 500);
+}
+
+// Modificar a função fazerLogout para dar opção de trocar empresa
+function fazerLogout() {
+  const escolha = confirm('Escolha uma ação:\n\nOK = Trocar de empresa\nCancelar = Sair completamente');
+  
+  if (escolha) {
+    // Trocar de empresa
+    mostrarTrocarEmpresa();
+  } else {
+    // Sair completamente
+    localStorage.removeItem('supervilaSessao');
+    usuarioLogado = null;
+    location.reload();
+  }
+}
 let usuarioLogado = null;
 let chartPizza = null,
   chartBarras = null;
@@ -246,80 +480,6 @@ function entrarNoApp() {
   }, 500);
 }
 
-// ─── LOGIN ──────────────────────────────────────────────────────────────
-async function verificarLogin() {
-  const usuario = document.getElementById("inputUsuario").value.toLowerCase().trim();
-  const senha = document.getElementById("inputSenha").value;
-  const msgErro = document.getElementById("msgErro");
-  const form = document.getElementById("loginForm");
-
-  msgErro.classList.remove("show");
-
-  // Validação básica
-  if (!usuario || !senha) {
-    msgErro.innerText = "❌ Preencha usuário e senha!";
-    msgErro.classList.add("show");
-    return;
-  }
-
-  // Mostrar loading
-  form.style.pointerEvents = "none";
-  form.classList.add("hidden");
-  document.getElementById("carregando").classList.add("show");
-
-  try {
-    // Tentar login via API
-    const res = await fetch(
-      `${API_URL}?action=login&usuario=${encodeURIComponent(usuario)}&senha=${encodeURIComponent(senha)}`
-    );
-    const data = await res.json();
-
-    if (data && data.sucesso) {
-      // Login via API bem-sucedido
-      usuarioLogado = {
-        usuario: data.usuario || usuario,
-        senha: senha,
-        nome: data.empresa || usuario,
-      };
-
-      localStorage.setItem("supervilaSessao", JSON.stringify(usuarioLogado));
-      entrarNoApp();
-    } else {
-      // Tentar credenciais locais
-      verificarCredenciaisLocais(usuario, senha);
-    }
-  } catch (e) {
-    console.error("Erro na API, tentando credenciais locais:", e);
-    verificarCredenciaisLocais(usuario, senha);
-  }
-}
-
-function verificarCredenciaisLocais(usuario, senha) {
-  if (CREDENCIAIS_FIXAS[usuario] && CREDENCIAIS_FIXAS[usuario].senha === senha) {
-    // Login local bem-sucedido
-    usuarioLogado = {
-      usuario: usuario,
-      senha: senha,
-      nome: CREDENCIAIS_FIXAS[usuario].nome,
-    };
-
-    localStorage.setItem("supervilaSessao", JSON.stringify(usuarioLogado));
-    entrarNoApp();
-  } else {
-    // Credenciais inválidas
-    document.getElementById("carregando").classList.remove("show");
-    const form = document.getElementById("loginForm");
-    form.classList.remove("hidden");
-    form.style.pointerEvents = "";
-
-    const msgErro = document.getElementById("msgErro");
-    msgErro.innerText = "❌ Usuário ou senha inválidos!";
-    msgErro.classList.add("show");
-
-    document.getElementById("inputSenha").value = "";
-    document.getElementById("inputSenha").focus();
-  }
-}
 
 // ─── TABS ─────────────────────────────────────────────────────────────────
 function mudarTab(id, el) {
