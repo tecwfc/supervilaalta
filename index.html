@@ -23,65 +23,85 @@
   <!-- ══════════════════════════════════════════════════
      LOGIN SCREEN
      ══════════════════════════════════════════════════ -->
-  <div id="telaLogin">
-      <div class="login-card">
-        <!-- <div class="login-logo">
-          <div class="badge"><span>SUPERVILA</span></div> -->
-
-
-          <div class="login-logo">
-  <img src="assets/logo_supervila.png" alt="Logo Supervila" style="width: 120px; height: auto; margin-bottom: 10px;">
-</div>
-   
-          <h2>Controle de Caixa</h2>
-          <p>Entre com suas credenciais</p>
-        </div>
-        <div id="loginForm">
-          <div class="field">
-            <label>Usuário</label>
-            <input
-              type="text"
-              id="inputUsuario"
-              placeholder="Digite seu usuário"
-              autocomplete="off"
-              onkeypress="
-                if (event.key === 'Enter')
-                  document.getElementById('inputSenha').focus();
-              "
-            />
-          </div>
-          <div class="field">
-            <label>Senha</label>
-            <div class="pwd-wrap">
-              <input
-                type="password"
-                id="inputSenha"
-                placeholder="Digite sua senha"
-                autocomplete="off"
-                onkeypress="if (event.key === 'Enter') verificarLogin();"
-              />
-              <button
-                type="button"
-                class="pwd-toggle"
-                onclick="toggleSenha('inputSenha', this)"
-              >
-                👁️
-              </button>
-            </div>
-          </div>
-          <div class="msg-erro" id="msgErro">
-            ❌ Usuário ou senha inválidos!
-          </div>
-          <button class="btn-login" onclick="verificarLogin()">
-            Entrar no Sistema
+  <!-- ══════════════════════════════════════════════════
+     LOGIN SCREEN
+     ══════════════════════════════════════════════════ -->
+<div id="telaLogin">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="assets/logo_supervila.png" alt="Logo Supervila" style="width: 120px; height: auto; margin-bottom: 10px;">
+      <h2>Controle de Caixa</h2>
+      <p>Selecione uma empresa para continuar</p>
+    </div>
+    
+    <div id="loginForm">
+      <!-- Novo campo: Seleção de Empresa -->
+      <div class="field">
+        <label>Empresa</label>
+        <select id="inputEmpresa" class="empresa-select" onchange="onEmpresaChange()">
+          <option value="">Selecione a empresa</option>
+          <option value="supervilaalta">Supervila Alta</option>
+          <option value="supervilamuriti">Supervila Muriti</option>
+          <!-- <option value="admin">Administrador</option> -->
+        </select>
+      </div>
+      
+      <div class="field">
+        <label>Usuário</label>
+        <input
+          type="text"
+          id="inputUsuario"
+          placeholder="Digite seu usuário"
+          autocomplete="off"
+          onkeypress="
+            if (event.key === 'Enter')
+              document.getElementById('inputSenha').focus();
+          "
+        />
+      </div>
+      
+      <div class="field">
+        <label>Senha</label>
+        <div class="pwd-wrap">
+          <input
+            type="password"
+            id="inputSenha"
+            placeholder="Digite sua senha"
+            autocomplete="off"
+            onkeypress="if (event.key === 'Enter') verificarLogin();"
+          />
+          <button
+            type="button"
+            class="pwd-toggle"
+            onclick="toggleSenha('inputSenha', this)"
+          >
+            👁️
           </button>
         </div>
-        <div class="spinner-wrap" id="carregando">
-          <div class="spinner"></div>
-          <p>Verificando credenciais…</p>
-        </div>
+      </div>
+      
+      <div class="msg-erro" id="msgErro">
+        ❌ Usuário ou senha inválidos!
+      </div>
+      
+      <button class="btn-login" onclick="verificarLogin()">
+        Entrar no Sistema
+      </button>
+      
+      <!-- Link para trocar de empresa -->
+      <div id="trocarEmpresaLink" style="display: none; margin-top: 16px; text-align: center;">
+        <button class="btn-trocar-empresa" onclick="mostrarSelecaoEmpresa()">
+          🔄 Trocar de Empresa
+        </button>
       </div>
     </div>
+    
+    <div class="spinner-wrap" id="carregando">
+      <div class="spinner"></div>
+      <p>Verificando credenciais…</p>
+    </div>
+  </div>
+</div>
 
   <!-- ══════════════════════════════════════════════════
      APP
@@ -94,9 +114,24 @@
   <div class="unidade-sm" id="topUnidade">—</div>
 </div>
 
+<div class="topbar-actions">
+    <!-- Botão de trocar empresa mobile -->
+    <button class="btn-trocar-mobile" onclick="mostrarTrocarEmpresa()" title="Trocar de empresa">
+      🔄
       <button class="btn-logout" onclick="fazerLogout()">🚪</button>
     </div>
 
+    <!-- Seletor de empresa na sidebar -->
+    <div class="empresa-selector-sidebar">
+      <div class="current-empresa">
+        <div class="lbl2">Empresa Atual</div>
+        <div class="val2" id="nomeEmpresaAtual">—</div>
+      </div>
+      <button class="btn-trocar-sidebar" onclick="mostrarTrocarEmpresa()">
+        🔄 Trocar
+      </button>
+    </div>
+  </div>
     <!-- Sidebar (desktop only) -->
     <aside class="sidebar" style="display: none">
       <div class="logo-area">
