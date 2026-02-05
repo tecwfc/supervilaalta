@@ -2491,3 +2491,256 @@ body {
     height: 190px;
   }
 }
+
+
+/* ════════════════════════════════════════════
+   ESTILOS PARA TROCA DE EMPRESA
+   ════════════════════════════════════════════ */
+.empresa-selector-sidebar {
+  background: var(--slate-50);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 16px 0;
+  border: 1px solid var(--slate-200);
+}
+
+.current-empresa .lbl2 {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--slate-500);
+  margin-bottom: 4px;
+}
+
+.current-empresa .val2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.btn-trocar-sidebar {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  background: var(--slate-100);
+  border: 1.5px solid var(--slate-300);
+  border-radius: 8px;
+  color: var(--slate-700);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-trocar-sidebar:hover {
+  background: var(--slate-200);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-trocar-mobile {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 10px;
+  transition: background 0.15s;
+  color: var(--slate-600);
+}
+
+.btn-trocar-mobile:active {
+  background: var(--slate-100);
+  color: var(--red);
+}
+
+.btn-trocar-empresa {
+  width: 100%;
+  padding: 10px;
+  background: var(--slate-100);
+  border: 1.5px solid var(--slate-300);
+  border-radius: 10px;
+  color: var(--slate-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-trocar-empresa:hover {
+  background: var(--slate-200);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* Estilo para o select de empresa */
+.empresa-select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--slate-200);
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--slate-50);
+  color: var(--slate-800);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.empresa-select:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(227, 29, 26, 0.1);
+}
+
+/* Modal de troca de empresa */
+.modal-trocar-empresa {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-trocar-empresa.show {
+  display: flex;
+}
+
+.modal-empresa-content {
+  background: #fff;
+  border-radius: 24px;
+  padding: 28px 24px;
+  width: 90%;
+  max-width: 400px;
+  animation: slideUp 0.25s ease;
+}
+
+.modal-empresa-content h3 {
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 16px;
+  text-align: center;
+  color: var(--slate-800);
+}
+
+.empresa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.empresa-option {
+  padding: 14px 16px;
+  border: 2px solid var(--slate-200);
+  border-radius: 12px;
+  background: var(--slate-50);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.empresa-option:hover {
+  border-color: var(--red);
+  background: #fee2e2;
+}
+
+.empresa-option.active {
+  border-color: var(--red);
+  background: #fee2e2;
+}
+
+.empresa-icon {
+  font-size: 20px;
+}
+
+.empresa-info h4 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--slate-800);
+  margin: 0 0 4px 0;
+}
+
+.empresa-info p {
+  font-size: 12px;
+  color: var(--slate-500);
+  margin: 0;
+}
+
+.modal-empresa-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.modal-empresa-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-confirmar-empresa {
+  background: var(--red);
+  color: white;
+}
+
+.btn-confirmar-empresa:hover {
+  background: var(--red-dark);
+}
+
+.btn-cancelar-empresa {
+  background: var(--slate-100);
+  color: var(--slate-700);
+  border: 1.5px solid var(--slate-300) !important;
+}
+
+.btn-cancelar-empresa:hover {
+  background: var(--slate-200);
+}
+
+/* Para desktop */
+@media (min-width: 768px) {
+  .btn-trocar-mobile {
+    display: none;
+  }
+}
+
+/* Para mobile */
+@media (max-width: 767px) {
+  .empresa-selector-sidebar {
+    display: none;
+  }
+}
