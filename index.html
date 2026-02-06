@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Supervila – Caixa</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css">
+
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#e31d1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+<body>
+  <!-- ══════════════════════════════════════════════════
+     LOGIN SCREEN
+     ══════════════════════════════════════════════════ -->
+<div id="telaLogin">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="assets/logo_supervila.png" alt="Logo Supervila" style="width: 120px; height: auto; margin-bottom: 10px;">
+      <h2>Controle de Caixa</h2>
+      <p>Selecione uma empresa para continuar</p>
+    </div>
+    
+    <div id="loginForm">
+      <!-- Novo campo: Seleção de Empresa -->
+      <div class="field">
+        <label>Empresa</label>
+        <select id="inputEmpresa" class="empresa-select" onchange="onEmpresaChange()">
+          <option value="">Selecione a empresa</option>
+          <option value="supervilaalta">Supervila Alta</option>
+          <option value="supervilamuriti">Supervila Muriti</option>
+          <!-- <option value="admin">Administrador</option> -->
+        </select>
+      </div>
+      
+      <div class="field">
+        <label>Usuário</label>
+        <input
+          type="text"
+          id="inputUsuario"
+          placeholder="Digite seu usuário"
+          autocomplete="off"
+          onkeypress="
+            if (event.key === 'Enter')
+              document.getElementById('inputSenha').focus();
+          "
+        />
+      </div>
+      
+      <div class="field">
+        <label>Senha</label>
+        <div class="pwd-wrap">
+          <input
+            type="password"
+            id="inputSenha"
+            placeholder="Digite sua senha"
+            autocomplete="off"
+            onkeypress="if (event.key === 'Enter') verificarLogin();"
+          />
+          <button
+            type="button"
+            class="pwd-toggle"
+            onclick="toggleSenha('inputSenha', this)"
+          >
+            👁️
+          </button>
+        </div>
+      </div>
+      
+      <div class="msg-erro" id="msgErro">
+        ❌ Usuário ou senha inválidos!
+      </div>
+      
+      <button class="btn-login" onclick="verificarLogin()">
+        Entrar no Sistema
+      </button>
+      
+      <!-- Link para trocar de empresa -->
+      <div id="trocarEmpresaLink" style="display: none; margin-top: 16px; text-align: center;">
+        <!-- <button class="btn-trocar-empresa" onclick="mostrarSelecaoEmpresa()"> -->
+          <!-- 🔄 Trocar de Empresa -->
+        <!-- </button> -->
+      </div>
+    </div>
+    
+    <div class="spinner-wrap" id="carregando">
+      <div class="spinner"></div>
+      <p>Verificando credenciais…</p>
+    </div>
+  </div>
+</div>
+
+  <!-- ══════════════════════════════════════════════════
+     APP
+     ══════════════════════════════════════════════════ -->
+  <div id="app">
+    <!-- Top bar (mobile only) -->
+    <div class="topbar">
+      <div class="logo-sm">
+   <img src="assets/logo_supervila.png" alt="Supervila" class="logo-top">
+  <div class="unidade-sm" id="topUnidade">—</div>
+</div>
+
+<div class="topbar-actions">
+    <!-- Botão de trocar empresa mobile -->
+    <!-- <button class="btn-trocar-mobile" onclick="mostrarTrocarEmpresa()" title="Trocar de empresa">
+      🔄 -->
+      <button class="btn-logout" onclick="fazerLogout()">🚪</button>
+    </div>
+
+    <!-- Seletor de empresa na sidebar -->
+    <div class="empresa-selector-sidebar">
+      <div class="current-empresa">
+        <div class="lbl2">Empresa Atual</div>
+        <div class="val2" id="nomeEmpresaAtual">—</div>
+      </div>
+      <!-- <button class="btn-trocar-sidebar" onclick="mostrarTrocarEmpresa()">
+        🔄 Trocar
+      </button> -->
+    </div>
+  </div>
+    <!-- Sidebar (desktop only) -->
+    <aside class="sidebar" style="display: none">
+      <div class="logo-area">
+  <img src="assets/logo_supervila.png" alt="Supervila" class="logo-sidebar">
+  <div class="unit-badge">
+
+          <div class="lbl2">Unidade</div>
+          <div class="val2" id="sideUnidade">—</div>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-item active" onclick="mudarTab('dash', this)">
+          <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="nav-item" onclick="mudarTab('lancar', this)">
+          <span class="nav-icon">➕</span> Novo Lançamento
+        </button>
+        <button class="nav-item" onclick="mudarTab('historico', this)">
+          <span class="nav-icon">📖</span> Livro de Caixa
+        </button>
+        <button class="nav-item" onclick="mudarTab('config', this)">
+          <span class="nav-icon">⚙️</span> Configurações
+        </button>
+      </nav>
+      <div class="user-box">
+        <div class="lbl">Logado como</div>
+        <div class="name" id="sideUsuario">—</div>
+        <button class="btn-logout-desk" onclick="fazerLogout()">
+          Sair do Sistema
+        </button>
+      </div>
+    </aside>
+
+    <!-- Scrollable content -->
+    <div class="content-scroll">
+      <!-- ── DASHBOARD ── -->
+      <div class="page active" id="tab-dash">
+        <div class="greeting">
+          <h1>Olá, <span id="nomeOperador">Operador</span> 👋</h1>
+          <p>Unidade: <span class="unit" id="txtUnidade">—</span></p>
+        </div>
+        <div class="cards-grid">
+          <div class="card-stat green">
+            <div class="lbl">Recebido</div>
+            <div class="val" id="cardReceitas">R$ 0,00</div>
+          </div>
+          <div class="card-stat rose">
+            <div class="lbl">Pago</div>
+            <div class="val" id="cardPago">R$ 0,00</div>
+          </div>
+          <div class="card-stat orange">
+            <div class="lbl">Fluxo</div>
+            <div class="val" id="cardFluxo">R$ 0,00</div>
+          </div>
+          <div class="card-stat slate">
+            <div class="lbl">Saldo Prévio</div>
+            <div class="val" id="cardPrevio">R$ 0,00</div>
+          </div>
+          <div class="card-stat highlight">
+            <div class="lbl">Saldo em Caixa</div>
+            <div class="val" id="cardSaldo">R$ 0,00</div>
+          </div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-box">
+            <h4>Proporção</h4>
+            <canvas id="graficoPizza"></canvas>
+          </div>
+          <div class="chart-box">
+            <h4>Comparativo</h4>
+            <canvas id="graficoBarras"></canvas>
+          </div>
+        </div>
+      </div>
+
+     
+      <!-- ── NOVO LANÇAMENTO ── -->
+      <div class="page" id="tab-lancar">
+        <div class="page-header"><span class="bar"></span> Novo Registro</div>
+        <div class="form-card">
+          <div class="field">
+            <label>Data</label><input type="date" id="data" />
+          </div>
+          <div class="field">
+            <label>Descrição</label>
+            <select id="desc" onchange="preencherDescricao(this.value)">
+              <option value="">Selecione uma descrição...</option>
+              <!-- As descrições serão carregadas aqui via JavaScript -->
+            </select>
+            <input type="text" id="descManual" placeholder="Ou digite manualmente"
+              style="margin-top: 8px; display: none;" />
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Tipo</label>
+              <select id="tipoOperacao">
+                <option value="recebido">Entrada (Recebido)</option>
+                <option value="pago">Saída (Pagamento)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Valor (R$)</label>
+              <input type="number" step="0.01" id="valor" placeholder="0,00" inputmode="decimal" />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-primary" id="btnLancar" onclick="lancar()">
+              <span class="btn-icon">💾</span>
+              <span class="btn-text">Salvar no Livro</span>
+            </button>
+            <button class="btn-clean" onclick="limparCamposLancamento()">
+              <span class="btn-icon">🧹</span>
+              <span class="btn-text">Limpar Campos</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- ── LIVRO DE CAIXA ── -->
+      <div class="page" id="tab-historico">
+        <div class="livro-header">
+          <div class="page-header">
+            <span class="bar"></span> Livro de Caixa
+          </div>
+        </div>
+        <div class="saldo-previo-banner">
+          <div>
+            <div class="lbl">Saldo Prévio</div>
+          </div>
+          <div class="val" id="bannerPrevio">R$ 0,00</div>
+        </div>
+
+        <div class="filter-strip">
+          <div class="filter-label">📄 Gerar PDF por período</div>
+          <div class="filter-row">
+            <select id="filtroTipo" onchange="atualizarFiltroPeriodo()">
+              <option value="mes">Por Mês</option>
+              <option value="periodo">Por Período</option>
+            </select>
+            <div id="wrapMes" style="display: contents">
+              <select id="filtroMes"></select>
+              <select id="filtroMesAno"></select>
+            </div>
+            <div id="wrapPeriodo" style="display: none; display: none; contents: none">
+              <input type="date" id="filtroPeriodoInicio" />
+              <input type="date" id="filtroPeriodoFim" />
+            </div>
+            <button class="btn-pdf" onclick="gerarPDFLivroCaixa()">
+              📄 PDF
+            </button>
+          </div>
+        </div>
+
+        <div id="libroCards"></div>
+      </div>
+
+    
+      <!-- ── CONFIGURAÇÕES ── -->
+<div class="page" id="tab-config">
+  <div class="config-header">
+    <div class="page-header">
+      <span class="bar"></span> Configurações
+    </div>
+    <p class="config-subtitle">Gerencie as configurações do sistema</p>
+  </div>
+
+  <div class="config-grid">
+    <!-- SEÇÃO: SALDO INICIAL -->
+    <div class="config-section">
+      <div class="section-header">
+        <div class="section-icon">💰</div>
+        <div>
+          <h3 class="section-title">Saldo Inicial</h3>
+          <p class="section-subtitle">⚠️ Requer senha de autorização</p>
+        </div>
+      </div>
+
+      <div class="config-form">
+        <div class="field-group">
+          <label class="field-label">Novo Saldo Inicial (R$)</label>
+          <div class="input-with-prefix">
+            <span class="input-prefix">R$</span>
+            <input type="number" step="0.01" id="inputSaldoPrevio" placeholder="0,00" class="field-input" />
+          </div>
+        </div>
+        
+        <div class="field-group">
+          <label class="field-label">🔐 Senha de Confirmação</label>
+          <div class="pwd-wrap">
+            <input type="password" id="senhaConfirmacao" placeholder="Senha de autorização" class="field-input"
+              onkeypress="if (event.key === 'Enter') salvarConfiguracoes();" />
+            <button type="button" class="pwd-toggle" onclick="toggleSenha('senhaConfirmacao', this)">
+              👁️
+            </button>
+          </div>
+        </div>
+        
+        <div class="config-messages">
+          <div class="msg-erro" id="msgErroConfig"></div>
+          <div class="msg-sucesso" id="msgSucessoConfig" style="display: none;">
+            ✅ Saldo atualizado com sucesso!
+          </div>
+        </div>
+        
+        <button class="btn-save" id="btnSalvarConfig" onclick="salvarConfiguracoes()">
+          <span class="btn-icon">💾</span>
+          <span class="btn-text">Atualizar Saldo</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SEÇÃO: CADASTRO DE DESCRIÇÕES -->
+    <div class="config-section">
+      <div class="section-header">
+        <div class="section-icon">📝</div>
+        <div>
+          <h3 class="section-title">Descrições</h3>
+          <p class="section-subtitle">Gerenciar descrições dos lançamentos</p>
+        </div>
+      </div>
+
+      <div class="config-form">
+        <div class="field-group">
+          <label class="field-label">Nova Descrição</label>
+          <div class="input-with-button">
+            <input type="text" id="novaDescricao" placeholder="Ex: Pagamento de fornecedor" class="field-input" />
+            <button class="btn-add" onclick="cadastrarDescricao()" title="Adicionar descrição">
+              <span>➕</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="config-messages">
+          <div class="msg-erro" id="msgErroDescricao" style="display: none;"></div>
+          <div class="msg-sucesso" id="msgSucessoDescricao" style="display: none;"></div>
+        </div>
+
+        <div class="descricoes-container">
+          <div class="container-header">
+            <h4>Descrições Cadastradas</h4>
+            <span class="badge-count" id="contadorDescricoes">0</span>
+          </div>
+          <div id="listaDescricoes" class="descricoes-list">
+            <!-- As descrições serão carregadas aqui -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEÇÃO: INFORMAÇÕES DO SISTEMA -->
+  <div class="info-card">
+    <div class="info-header">
+      <div class="info-icon">ℹ️</div>
+      <h4>Informações do Sistema</h4>
+    </div>
+    <div class="info-content">
+      <p><strong>Saldo Inicial:</strong> Valor em caixa antes dos lançamentos. A alteração requer senha para segurança.</p>
+      <p><strong>Descrições:</strong> Cadastre descrições que aparecerão como sugestão ao fazer lançamentos.</p>
+      <div class="info-footer">
+        <span class="version">Versão 1.0.0</span>
+        <span class="status">● Sistema Operacional</span>
+      </div>
+    </div>
+  </div>
+</div>
+    <!-- Bottom nav (mobile only) -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="mudarTab('dash', this)">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-btn" onclick="mudarTab('lancar', this)">
+        <span class="nav-icon">➕</span> Novo
+      </button>
+      <button class="nav-btn" onclick="mudarTab('historico', this)">
+        <span class="nav-icon">📖</span> Livro
+      </button>
+      <button class="nav-btn" onclick="mudarTab('config', this)">
+        <span class="nav-icon">⚙️</span> Config
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+     MODAL EDITAR
+     ══════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════
+     MODAL EDITAR
+     ══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalEditar" onclick="if (event.target === this) fecharModal();">
+  <div class="modal-box">
+    <div class="modal-top">
+      <h3>✏️ Editar Registro</h3>
+      <button class="modal-close" onclick="fecharModal()">×</button>
+    </div>
+    <input type="hidden" id="editId" />
+    <div class="field">
+      <label>Data</label><input type="date" id="editData" />
+    </div>
+    <div class="field">
+      <label>Descrição</label>
+      <select id="editDesc" class="modal-select">
+        <option value="">Selecione uma descrição...</option>
+        <!-- As descrições serão carregadas via JavaScript -->
+      </select>
+      <input type="text" id="editDescManual" placeholder="Digite uma nova descrição..." 
+             style="margin-top: 8px; display: none;" />
+    </div>
+    <div class="row2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+      <div class="field">
+        <label>Tipo</label>
+        <select id="editTipo">
+          <option value="recebido">Entrada (Recebido)</option>
+          <option value="pago">Saída (Pagamento)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Valor (R$)</label>
+        <input type="number" step="0.01" id="editValor" inputmode="decimal" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="btnSalvarEditar" onclick="salvarEditar()">
+        Salvar
+      </button>
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+  <script src="script.js"></script>
+ 
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log("App Pronto para instalar!"))
+      .catch(err => console.log("Erro no registro do SW:", err));
+  }
+</script>   
+</body>
+</html>
+
+
+
+
