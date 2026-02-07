@@ -415,40 +415,49 @@
   <!-- ══════════════════════════════════════════════════
      MODAL EDITAR
      ══════════════════════════════════════════════════ -->
-  <div class="modal-overlay" id="modalEditar" onclick="if (event.target === this) fecharModal();">
-    <div class="modal-box">
-      <div class="modal-top">
-        <h3>✏️ Editar Registro</h3>
-        <button class="modal-close" onclick="fecharModal()">×</button>
-      </div>
-      <input type="hidden" id="editId" />
+  <!-- ══════════════════════════════════════════════════
+     MODAL EDITAR
+     ══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalEditar" onclick="if (event.target === this) fecharModal();">
+  <div class="modal-box">
+    <div class="modal-top">
+      <h3>✏️ Editar Registro</h3>
+      <button class="modal-close" onclick="fecharModal()">×</button>
+    </div>
+    <input type="hidden" id="editId" />
+    <div class="field">
+      <label>Data</label><input type="date" id="editData" />
+    </div>
+    <div class="field">
+      <label>Descrição</label>
+      <select id="editDesc" class="modal-select">
+        <option value="">Selecione uma descrição...</option>
+        <!-- As descrições serão carregadas via JavaScript -->
+      </select>
+      <input type="text" id="editDescManual" placeholder="Digite uma nova descrição..." 
+             style="margin-top: 8px; display: none;" />
+    </div>
+    <div class="row2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
       <div class="field">
-        <label>Data</label><input type="date" id="editData" />
+        <label>Tipo</label>
+        <select id="editTipo">
+          <option value="recebido">Entrada (Recebido)</option>
+          <option value="pago">Saída (Pagamento)</option>
+        </select>
       </div>
       <div class="field">
-        <label>Descrição</label><input type="text" id="editDesc" />
-      </div>
-      <div class="row2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
-        <div class="field">
-          <label>Tipo</label>
-          <select id="editTipo">
-            <option value="recebido">Entrada (Recebido)</option>
-            <option value="pago">Saída (Pagamento)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Valor (R$)</label>
-          <input type="number" step="0.01" id="editValor" inputmode="decimal" />
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-primary" id="btnSalvarEditar" onclick="salvarEditar()">
-          Salvar
-        </button>
-        <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+        <label>Valor (R$)</label>
+        <input type="number" step="0.01" id="editValor" inputmode="decimal" />
       </div>
     </div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="btnSalvarEditar" onclick="salvarEditar()">
+        Salvar
+      </button>
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+    </div>
   </div>
+</div>
 
   <script src="script.js"></script>
  
