@@ -88,28 +88,6 @@ function verificarCredenciaisLocais(usuario, senha, empresaId) {
   }
 }
 
-
-// Função para troca rápida entre empresas (se já conhece a senha)
-// function trocaRapidaEmpresa(novaEmpresaId) {
-//   const empresa = empresasDisponiveis.find(e => e.id === novaEmpresaId);
-//   if (!empresa) return false;
-  
-//   if (usuarioLogado && usuarioLogado.senha === empresa.senha) {
-//     // Se já tem a senha salva, troca direto
-//     usuarioLogado = {
-//       usuario: novaEmpresaId,
-//       senha: empresa.senha,
-//       nome: empresa.nome,
-//       empresaId: novaEmpresaId
-//     };
-    
-//     localStorage.setItem('supervilaSessao', JSON.stringify(usuarioLogado));
-//     location.reload();
-//     return true;
-//   }
-  
-//   return false;
-// }
 function verificarCredenciaisLocais(usuario, senha) {
   if (CREDENCIAIS_FIXAS[usuario] && CREDENCIAIS_FIXAS[usuario].senha === senha) {
     // Login local bem-sucedido
@@ -224,6 +202,7 @@ function entrarNoApp() {
     carregarDescricoesSelect();
     carregarConfiguracoes();
     atualizarTabela();
+    preCarregarDescricoes(); // NOVA LINHA
   }, 500);
 }
 
@@ -653,6 +632,17 @@ function renderGraficos(rec, pag) {
   if (chartPizza) chartPizza.destroy();
   if (chartBarras) chartBarras.destroy();
 
+  // Garantir que os canvases estão visíveis
+  ctxP.style.display = 'block';
+  ctxB.style.display = 'block';
+
+  // Configurações comuns
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 1.5, // Proporção fixa
+  };
+
   // Gráfico de pizza
   chartPizza = new Chart(ctxP.getContext("2d"), {
     type: "doughnut",
@@ -663,21 +653,23 @@ function renderGraficos(rec, pag) {
           data: [rec, pag],
           backgroundColor: ["#10b981", "#ef4444"],
           borderWidth: 2,
+          borderColor: '#fff',
         },
       ],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      ...commonOptions,
       plugins: {
         legend: {
           position: "bottom",
           labels: { 
             font: { size: 11 },
-            boxWidth: 14 
+            boxWidth: 14,
+            padding: 15
           },
         },
       },
+      cutout: '60%', // Para doughnut
     },
   });
 
@@ -691,12 +683,13 @@ function renderGraficos(rec, pag) {
           data: [rec, pag],
           backgroundColor: ["#10b981", "#ef4444"],
           borderRadius: 6,
+          borderWidth: 1,
+          borderColor: ['#0da271', '#dc2626'],
         },
       ],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      ...commonOptions,
       plugins: { 
         legend: { 
           display: false 
@@ -704,8 +697,12 @@ function renderGraficos(rec, pag) {
       },
       scales: {
         y: { 
+          beginAtZero: true,
           ticks: { 
-            font: { size: 10 } 
+            font: { size: 10 },
+            callback: function(value) {
+              return 'R$ ' + value.toLocaleString('pt-BR');
+            }
           } 
         },
         x: { 
@@ -903,27 +900,56 @@ async function excluir(id) {
 }
 
 // ─── MODAL EDITAR ─────────────────────────────────────────────────────────
-function abrirModal(id, data, desc, rec, pag) {
+async function abrirModal(id, data, desc, rec, pag) {
   // Converter data para formato input[type="date"]
   const dataInput = toInputDate(data);
   
   // Preencher campos do modal
   document.getElementById("editId").value = id;
   document.getElementById("editData").value = dataInput;
-  document.getElementById("editDesc").value = desc;
 
   const isEntrada = rec > 0;
   document.getElementById("editTipo").value = isEntrada ? "recebido" : "pago";
   document.getElementById("editValor").value = isEntrada ? rec : pag;
 
   // Estilizar select
-  const select = document.getElementById("editTipo");
-  updateSelectColor(select);
+  const tipoSelect = document.getElementById("editTipo");
+  updateSelectColor(tipoSelect);
 
-  // Mostrar modal
+  // Preencher descrição temporariamente
+  const descSelect = document.getElementById('editDesc');
+  const descManual = document.getElementById('editDescManual');
+  
+  // Limpar e mostrar opção padrão
+  descSelect.innerHTML = '<option value="">Carregando descrições...</option>';
+  
+  // MOSTRAR O MODAL IMEDIATAMENTE (sem esperar as descrições)
   document.getElementById("modalEditar").classList.add("show");
+  
+  // Carregar descrições ASSINCRONAMENTE após mostrar o modal
+  setTimeout(async () => {
+    try {
+      await carregarDescricoesModal(desc);
+    } catch (e) {
+      console.error('Erro ao carregar descrições:', e);
+      // Fallback: mostrar apenas campo manual com a descrição atual
+      descSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+      const manualOption = document.createElement('option');
+      manualOption.value = "manual";
+      manualOption.textContent = "✏️ Digitar manualmente...";
+      descSelect.appendChild(manualOption);
+      
+      descSelect.value = "manual";
+      descManual.style.display = 'block';
+      descManual.value = desc || '';
+    }
+  }, 0);
+  
+  // Focar no select de descrição
+  setTimeout(() => {
+    document.getElementById("editDesc").focus();
+  }, 100);
 }
-
 function fecharModal() {
   const select = document.getElementById("editTipo");
   if (select) {
@@ -932,6 +958,14 @@ function fecharModal() {
     select.style.fontWeight = "";
   }
 
+  // Limpar campos
+  document.getElementById("editDesc").value = "";
+  const descManual = document.getElementById("editDescManual");
+  if (descManual) {
+    descManual.value = "";
+    descManual.style.display = "none";
+  }
+  
   document.getElementById("modalEditar").classList.remove("show");
 }
 
@@ -939,9 +973,21 @@ async function salvarEditar() {
   const btn = document.getElementById("btnSalvarEditar");
   const id = document.getElementById("editId").value;
   const dataInput = document.getElementById("editData").value;
-  const desc = document.getElementById("editDesc").value;
+  let desc = '';
   const tipo = document.getElementById("editTipo").value;
   let valor = document.getElementById("editValor").value;
+
+  // Obter descrição (pode ser do select ou do campo manual)
+  const descSelect = document.getElementById('editDesc');
+  const descManual = document.getElementById('editDescManual');
+  
+  if (descSelect.value === "manual") {
+    // Usar valor do campo manual
+    desc = descManual ? descManual.value.trim() : '';
+  } else {
+    // Usar valor do select
+    desc = descSelect.value.trim();
+  }
 
   // Validação
   if (!dataInput || !desc || !valor) {
@@ -1063,6 +1109,214 @@ async function carregarDescricoesSelect() {
   }
 }
 
+// ─── CARREGAR DESCRIÇÕES NO MODAL DE EDIÇÃO ──────────────────────────────
+async function carregarDescricoesModal(descricaoAtual) {
+  const descSelect = document.getElementById('editDesc');
+  const descManual = document.getElementById('editDescManual');
+  
+  if (!descSelect) return;
+  
+  try {
+    // Usar cache se disponível
+    const cacheKey = 'descricoes_cache';
+    const cacheTimeKey = 'descricoes_cache_time';
+    const now = Date.now();
+    const cacheExpiry = 5 * 60 * 1000; // 5 minutos
+    
+    let data;
+    const cachedData = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(cacheTimeKey);
+    
+    // Usar cache se ainda for válido
+    if (cachedData && cachedTime && (now - parseInt(cachedTime)) < cacheExpiry) {
+      data = JSON.parse(cachedData);
+    } else {
+      // Buscar descrições da API
+      const res = await fetch(`${API_URL}?action=buscarDescricoes`);
+      data = await res.json();
+      
+      // Salvar em cache
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+      localStorage.setItem(cacheTimeKey, now.toString());
+    }
+    
+    // Limpar select
+    descSelect.innerHTML = '<option value="">Selecione uma descrição...</option>';
+    
+    if (data.status === 'ok' && data.descricoes && data.descricoes.length > 0) {
+      // Criar fragmento para melhor performance
+      const fragment = document.createDocumentFragment();
+      
+      // Adicionar descrições da API
+      data.descricoes.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.descricao;
+        option.textContent = item.descricao;
+        fragment.appendChild(option);
+      });
+      
+      // Adicionar opção "Digitar manualmente"
+      const manualOption = document.createElement('option');
+      manualOption.value = "manual";
+      manualOption.textContent = "✏️ Digitar manualmente...";
+      fragment.appendChild(manualOption);
+      
+      // Adicionar tudo de uma vez
+      descSelect.appendChild(fragment);
+      
+      // Definir valor atual
+      if (descricaoAtual && descricaoAtual.trim() !== '') {
+        // Verificar se a descrição atual está na lista
+        const descricoesExistentes = data.descricoes.map(d => d.descricao);
+        
+        if (descricoesExistentes.includes(descricaoAtual.trim())) {
+          // Se está na lista, selecionar
+          descSelect.value = descricaoAtual.trim();
+          if (descManual) descManual.style.display = 'none';
+        } else {
+          // Se não estiver na lista, selecionar "manual" e mostrar campo
+          descSelect.value = "manual";
+          if (descManual) {
+            descManual.style.display = 'block';
+            descManual.value = descricaoAtual.trim();
+          }
+        }
+      } else {
+        // Se não há descrição atual, deixar vazio
+        descSelect.value = "";
+        if (descManual) descManual.style.display = 'none';
+      }
+    } else {
+      // Se não houver descrições, mostrar apenas opção manual
+      const manualOption = document.createElement('option');
+      manualOption.value = "manual";
+      manualOption.textContent = "✏️ Digitar manualmente...";
+      descSelect.appendChild(manualOption);
+      
+      // Configurar com a descrição atual
+      if (descricaoAtual && descricaoAtual.trim() !== '') {
+        descSelect.value = "manual";
+        if (descManual) {
+          descManual.style.display = 'block';
+          descManual.value = descricaoAtual.trim();
+        }
+      } else {
+        descSelect.value = "";
+        if (descManual) descManual.style.display = 'none';
+      }
+    }
+    
+  } catch (e) {
+    console.error('Erro ao carregar descrições para o modal:', e);
+    // Fallback em caso de erro
+    descSelect.innerHTML = '<option value="">Selecione uma descrição...</option>';
+    const manualOption = document.createElement('option');
+    manualOption.value = "manual";
+    manualOption.textContent = "✏️ Digitar manualmente...";
+    descSelect.appendChild(manualOption);
+    
+    // Configurar com a descrição atual
+    if (descricaoAtual && descricaoAtual.trim() !== '') {
+      descSelect.value = "manual";
+      if (descManual) {
+        descManual.style.display = 'block';
+        descManual.value = descricaoAtual.trim();
+      }
+    } else {
+      descSelect.value = "";
+      if (descManual) descManual.style.display = 'none';
+    }
+  }
+}
+
+
+// Pré-carregar descrições quando abrir a aba de lançamentos
+function preCarregarDescricoes() {
+  // Iniciar carregamento em background
+  setTimeout(async () => {
+    try {
+      const res = await fetch(`${API_URL}?action=buscarDescricoes`);
+      const data = await res.json();
+      
+      if (data.status === 'ok') {
+        // Salvar em cache
+        localStorage.setItem('descricoes_cache', JSON.stringify(data));
+        localStorage.setItem('descricoes_cache_time', Date.now().toString());
+      }
+    } catch (e) {
+      console.log('Pré-carregamento de descrições falhou:', e);
+    }
+  }, 1000); // Esperar 1 segundo após carregar a página
+}
+
+
+
+function criarCampoDescricaoExtra(valorAtual) {
+  const select = document.getElementById('editDesc');
+  const container = select.parentNode;
+  
+  // Remover campo extra se existir
+  const existingExtra = container.querySelector('#editDescExtra');
+  if (existingExtra) existingExtra.remove();
+  
+  if (select.value === "outro") {
+    // Criar campo de texto extra
+    const inputExtra = document.createElement('input');
+    inputExtra.type = 'text';
+    inputExtra.id = 'editDescExtra';
+    inputExtra.placeholder = 'Digite a descrição';
+    inputExtra.value = valorAtual || '';
+    inputExtra.style.marginTop = '8px';
+    inputExtra.style.width = '100%';
+    inputExtra.style.padding = '13px 14px';
+    inputExtra.style.border = '2px solid var(--slate-200)';
+    inputExtra.style.borderRadius = '14px';
+    inputExtra.style.fontFamily = 'inherit';
+    inputExtra.style.fontSize = '15px';
+    inputExtra.style.fontWeight = '600';
+    inputExtra.style.background = 'var(--slate-50)';
+    
+    container.appendChild(inputExtra);
+  }
+}
+
+// Adicionar evento para mostrar campo extra quando selecionar "Outro"
+document.addEventListener('DOMContentLoaded', function() {
+  const descSelect = document.getElementById('editDesc');
+  if (descSelect) {
+    descSelect.addEventListener('change', function() {
+      if (this.value === "outro") {
+        criarCampoDescricaoExtra('');
+      } else {
+        const container = this.parentNode;
+        const extra = container.querySelector('#editDescExtra');
+        if (extra) extra.remove();
+      }
+    });
+  }
+});
+
+
+// Adicionar evento para o select de descrição no modal
+document.addEventListener('DOMContentLoaded', function() {
+  const descSelect = document.getElementById('editDesc');
+  const descManual = document.getElementById('editDescManual');
+  
+  if (descSelect && descManual) {
+    descSelect.addEventListener('change', function() {
+      if (this.value === "manual") {
+        // Mostrar campo para digitar manualmente
+        descManual.style.display = 'block';
+        descManual.value = '';
+        descManual.focus();
+      } else {
+        // Ocultar campo manual
+        descManual.style.display = 'none';
+        descManual.value = '';
+      }
+    });
+  }
+});
 function preencherDescricao(valor) {
   const descManual = document.getElementById('descManual');
   
@@ -1641,12 +1895,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
+// Configurar evento para o select de descrição no modal
+document.addEventListener('DOMContentLoaded', function() {
+  const descSelect = document.getElementById('editDesc');
+  const descManual = document.getElementById('editDescManual');
+  
+  if (descSelect && descManual) {
+    descSelect.addEventListener('change', function() {
+      if (this.value === "manual") {
+        // Mostrar campo para digitar manualmente
+        descManual.style.display = 'block';
+        descManual.value = '';
+        descManual.focus();
+      } else {
+        // Ocultar campo manual
+        descManual.style.display = 'none';
+        descManual.value = '';
+      }
+    });
+    
+    // Também configurar no campo manual
+    descManual.addEventListener('input', function() {
+      // Atualizar o select se estiver digitando algo único
+      const descSelect = document.getElementById('editDesc');
+      if (this.value.trim() && descSelect.value === "manual") {
+        // Mantém como "manual" mas mostra o que está sendo digitado
+      }
+    });
+  }
+});
 
 
-
-
-
-
+// No final do arquivo script.js
+window.addEventListener('resize', function() {
+  if (chartPizza || chartBarras) {
+    setTimeout(() => {
+      const rec = parseFloat(document.getElementById("cardReceitas").textContent.replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
+      const pag = parseFloat(document.getElementById("cardPago").textContent.replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
+      
+      if (rec > 0 || pag > 0) {
+        renderGraficos(rec, pag);
+      }
+    }, 300);
+  }
+});
 
 
 // ─── EXPORTAR FUNÇÕES PARA O ESCOPO GLOBAL ───────────────────────────────
@@ -1666,9 +1958,3 @@ window.abrirModal = abrirModal;
 window.fecharModal = fecharModal;
 window.salvarEditar = salvarEditar;
 window.excluir = excluir;
-
-
-
-
-
-
