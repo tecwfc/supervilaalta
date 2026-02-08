@@ -247,46 +247,121 @@
           </div>
         </div>
       </div>
-      <!-- ── LIVRO DE CAIXA ── -->
-      <div class="page" id="tab-historico">
-        <div class="livro-header">
-          <div class="page-header">
-            <span class="bar"></span> Livro de Caixa
-          </div>
-        </div>
-        <div class="saldo-previo-banner">
-          <div>
-            <div class="lbl">Saldo Prévio</div>
-          </div>
-          <div class="val" id="bannerPrevio">R$ 0,00</div>
-        </div>
 
-        <div class="filter-strip">
-          <div class="filter-label">📄 Gerar PDF por período</div>
-          <div class="filter-row">
-            <select id="filtroTipo" onchange="atualizarFiltroPeriodo()">
-              <option value="mes">Por Mês</option>
-              <option value="periodo">Por Período</option>
-            </select>
-            <div id="wrapMes" style="display: contents">
-              <select id="filtroMes"></select>
-              <select id="filtroMesAno"></select>
-            </div>
-            <div id="wrapPeriodo" style="display: none; display: none; contents: none">
-              <input type="date" id="filtroPeriodoInicio" />
-              <input type="date" id="filtroPeriodoFim" />
-            </div>
-            <button class="btn-pdf" onclick="gerarPDFLivroCaixa()">
-              📄 PDF
-            </button>
-          </div>
-        </div>
+ <!-- ── LIVRO DE CAIXA ── -->
+<div class="page" id="tab-historico">
+  <div class="livro-header">
+    <div class="page-header">
+      <span class="bar"></span> Livro de Caixa
+    </div>
+  </div>
+  
+  <div class="saldo-previo-banner">
+    <div>
+      <div class="lbl">Saldo Prévio</div>
+    </div>
+    <div class="val" id="bannerPrevio">R$ 0,00</div>
+  </div>
 
-        <div id="libroCards"></div>
-      </div>
-
+  <!-- NOVA BARRA DE PROGRESSO -->
+  <div class="progresso-caixa">
+    <div class="progresso-header">
+      <h4>📊 Progresso do Caixa</h4>
+      <div class="progresso-total" id="progressoTotal">Total: R$ 0,00</div>
+    </div>
     
-      <!-- ── CONFIGURAÇÕES ── -->
+    <!-- Barra de Recebido -->
+    <div class="progresso-item">
+      <div class="progresso-label">
+        <span class="progresso-titulo">Recebido</span>
+        <span class="progresso-valor" id="progressoRecebido">R$ 0,00</span>
+      </div>
+      <div class="progresso-bar-container">
+        <div class="progresso-bar recebido" id="barraRecebido" style="width: 0%"></div>
+        <div class="progresso-porcentagem" id="porcentagemRecebido">0%</div>
+      </div>
+    </div>
+    
+    <!-- Barra de Pago -->
+    <div class="progresso-item">
+      <div class="progresso-label">
+        <span class="progresso-titulo">Pago</span>
+        <span class="progresso-valor" id="progressoPago">R$ 0,00</span>
+      </div>
+      <div class="progresso-bar-container">
+        <div class="progresso-bar pago" id="barraPago" style="width: 0%"></div>
+        <div class="progresso-porcentagem" id="porcentagemPago">0%</div>
+      </div>
+    </div>
+    
+    <!-- Barra de Fluxo -->
+    <div class="progresso-item">
+      <div class="progresso-label">
+        <span class="progresso-titulo">Fluxo Líquido</span>
+        <span class="progresso-valor" id="progressoFluxo">R$ 0,00</span>
+      </div>
+      <div class="progresso-bar-container">
+        <div class="progresso-bar fluxo" id="barraFluxo" style="width: 50%"></div>
+        <div class="progresso-porcentagem" id="porcentagemFluxo">0%</div>
+      </div>
+    </div>
+    
+    <!-- Legenda -->
+    <div class="progresso-legenda">
+      <div class="legenda-item">
+        <span class="legenda-cor recebido"></span>
+        <span>Recebido</span>
+      </div>
+      <div class="legenda-item">
+        <span class="legenda-cor pago"></span>
+        <span>Pago</span>
+      </div>
+      <div class="legenda-item">
+        <span class="legenda-cor fluxo"></span>
+        <span>Fluxo Líquido</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-strip">
+    <div class="filter-label">📄 Gerar PDF por período</div>
+    <div class="filter-row">
+      <select id="filtroTipo" onchange="atualizarFiltroPeriodo()">
+        <option value="mes">Por Mês</option>
+        <option value="periodo">Por Período</option>
+        <option value="todos">Todos os Registros</option>
+      </select>
+      <div id="wrapMes" style="display: contents">
+        <select id="filtroMes"></select>
+        <select id="filtroMesAno"></select>
+      </div>
+      <div id="wrapPeriodo" style="display: none">
+        <input type="date" id="filtroPeriodoInicio" />
+        <input type="date" id="filtroPeriodoFim" />
+      </div>
+      <!-- No seu filter-strip, modifique o botão PDF: -->
+<button class="btn-pdf" onclick="gerarPDFLivroCaixa()" id="btnGerarPDF">
+  <span class="btn-pdf-icon">📄</span>
+  <span class="btn-pdf-text">Gerar PDF</span>
+  <span class="btn-pdf-loading" style="display: none;">
+    <span class="lupa-animada">🔍</span>
+  </span>
+</button>
+      <button class="btn-clear-all" onclick="limparTudoConfirmar()">
+        🗑️ Limpar Tudo
+      </button>
+    </div>
+    
+    <!-- Nova linha com contador de registros -->
+    <div class="filter-info" id="filterInfo" style="margin-top: 8px; font-size: 12px; color: var(--slate-500); display: none;">
+      <span id="registroCount">0</span> registros encontrados
+    </div>
+  </div>
+
+  <div id="libroCards"></div>
+</div>
+
+<!-- ── CONFIGURAÇÕES ── -->
 <div class="page" id="tab-config">
   <div class="config-header">
     <div class="page-header">
