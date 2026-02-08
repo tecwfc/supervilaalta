@@ -7,7 +7,14 @@ const CREDENCIAIS_FIXAS = {
   admin: { senha: "admin10", nome: "admin" },
 };
 
+
+// No início do arquivo, após empresasDisponiveis:
+let usuarioLogado = null;
+let chartPizza = null,
+  chartBarras = null;
+let dadosCache = { lista: [], saldoPrevio: 0 };
 // ─── LOGIN ──────────────────────────────────────────────────────────────
+// Substituir as duas versões conflitantes por esta única versão:
 async function verificarLogin() {
   const empresa = document.getElementById('inputEmpresa').value;
   const usuario = document.getElementById('inputUsuario').value.toLowerCase().trim();
@@ -18,8 +25,8 @@ async function verificarLogin() {
   msgErro.classList.remove('show');
 
   // Validação básica
-  if (!usuario || !senha) {
-    msgErro.innerText = '❌ Preencha usuário e senha!';
+  if (!empresa || !usuario || !senha) {
+    msgErro.innerText = '❌ Preencha todos os campos!';
     msgErro.classList.add('show');
     return;
   }
@@ -30,7 +37,7 @@ async function verificarLogin() {
   document.getElementById('carregando').classList.add('show');
 
   try {
-    // Tentar login via API
+    // Tentar login via API primeiro
     const res = await fetch(
       `${API_URL}?action=login&usuario=${encodeURIComponent(usuario)}&senha=${encodeURIComponent(senha)}`
     );
@@ -42,38 +49,30 @@ async function verificarLogin() {
         usuario: data.usuario || usuario,
         senha: senha,
         nome: data.empresa || usuario,
-        empresaId: empresa // Adicionar ID da empresa
+        empresaId: empresa
       };
-
-      localStorage.setItem('supervilaSessao', JSON.stringify(usuarioLogado));
-      entrarNoApp();
     } else {
       // Tentar credenciais locais
-      verificarCredenciaisLocais(usuario, senha, empresa);
+      const empresaCred = empresasDisponiveis.find(e => e.id === empresa);
+      
+      if (empresaCred && empresaCred.senha === senha && empresaCred.id === usuario) {
+        usuarioLogado = {
+          usuario: empresa,
+          senha: senha,
+          nome: empresaCred.nome,
+          empresaId: empresa
+        };
+      } else {
+        throw new Error('Credenciais inválidas');
+      }
     }
-  } catch (e) {
-    console.error('Erro na API, tentando credenciais locais:', e);
-    verificarCredenciaisLocais(usuario, senha, empresa);
-  }
-}
-
-// Modificar a função verificarCredenciaisLocais
-function verificarCredenciaisLocais(usuario, senha, empresaId) {
-  const empresa = empresasDisponiveis.find(e => e.id === empresaId);
-  
-  if (empresa && empresa.senha === senha) {
-    // Login local bem-sucedido
-    usuarioLogado = {
-      usuario: empresaId,
-      senha: senha,
-      nome: empresa.nome,
-      empresaId: empresaId
-    };
 
     localStorage.setItem('supervilaSessao', JSON.stringify(usuarioLogado));
     entrarNoApp();
-  } else {
-    // Credenciais inválidas
+    
+  } catch (e) {
+    console.error('Erro no login:', e);
+    
     document.getElementById('carregando').classList.remove('show');
     const form = document.getElementById('loginForm');
     form.classList.remove('hidden');
@@ -87,34 +86,6 @@ function verificarCredenciaisLocais(usuario, senha, empresaId) {
     document.getElementById('inputSenha').focus();
   }
 }
-
-function verificarCredenciaisLocais(usuario, senha) {
-  if (CREDENCIAIS_FIXAS[usuario] && CREDENCIAIS_FIXAS[usuario].senha === senha) {
-    // Login local bem-sucedido
-    usuarioLogado = {
-      usuario: usuario,
-      senha: senha,
-      nome: CREDENCIAIS_FIXAS[usuario].nome,
-    };
-
-    localStorage.setItem("supervilaSessao", JSON.stringify(usuarioLogado));
-    entrarNoApp();
-  } else {
-    // Credenciais inválidas
-    document.getElementById("carregando").classList.remove("show");
-    const form = document.getElementById("loginForm");
-    form.classList.remove("hidden");
-    form.style.pointerEvents = "";
-
-    const msgErro = document.getElementById("msgErro");
-    msgErro.innerText = "❌ Usuário ou senha inválidos!";
-    msgErro.classList.add("show");
-
-    document.getElementById("inputSenha").value = "";
-    document.getElementById("inputSenha").focus();
-  }
-}
-
 
 // ─── GESTÃO DE MULTI-EMPRESA ──────────────────────────────────────────────
 let empresasDisponiveis = [
@@ -153,28 +124,6 @@ function mostrarSelecaoEmpresa() {
   }
 }
 
-// function mostrarTrocarEmpresa() {
-//   if (confirm('Deseja trocar para outra empresa?\nVocê precisará fazer login novamente.')) {
-//     // Limpar apenas a empresa atual, mantendo usuário/senha se quiser
-//     localStorage.removeItem('supervilaSessao');
-//     usuarioLogado = null;
-    
-//     // Mostrar tela de login com foco no seletor de empresa
-//     document.getElementById('telaLogin').classList.remove('hidden');
-//     document.getElementById('app').classList.remove('show');
-    
-//     // Resetar formulário
-//     document.getElementById('inputEmpresa').value = '';
-//     document.getElementById('inputUsuario').value = '';
-//     document.getElementById('inputUsuario').readOnly = false;
-//     document.getElementById('inputUsuario').style.background = '';
-//     document.getElementById('inputSenha').value = '';
-    
-//     // Mostrar link de trocar empresa (se já estiver logado antes)
-//     document.getElementById('trocarEmpresaLink').style.display = 'block';
-//   }
-// }
-
 // Modificar a função entrarNoApp para incluir o nome da empresa
 function entrarNoApp() {
   // Ocultar tela de login
@@ -206,24 +155,10 @@ function entrarNoApp() {
   }, 500);
 }
 
-// Modificar a função fazerLogout para dar opção de trocar empresa
-// function fazerLogout() {
-//   const escolha = confirm('Escolha uma ação:\n\nOK = Trocar de empresa\nCancelar = Sair completamente');
-  
-//   if (escolha) {
-//     // Trocar de empresa
-//     mostrarTrocarEmpresa();
-//   } else {
-//     // Sair completamente
-//     localStorage.removeItem('supervilaSessao');
-//     usuarioLogado = null;
-//     location.reload();
-//   }
-// }
-let usuarioLogado = null;
-let chartPizza = null,
-  chartBarras = null;
-let dadosCache = { lista: [], saldoPrevio: 0 };
+// let usuarioLogado = null;
+// let chartPizza = null,
+//   chartBarras = null;
+// let dadosCache = { lista: [], saldoPrevio: 0 };
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
@@ -539,6 +474,10 @@ async function atualizarTabela() {
       // Atualizar campo de saldo inicial nas configurações
       document.getElementById("inputSaldoPrevio").value = dadosCache.saldoPrevio.toFixed(2);
 
+      // Atualizar barras de progresso
+      // atualizarBarrasSimples(tRec, tPag);
+       atualizarBarrasCaixa(tRec, tPag);
+     
       // Renderizar componentes
       renderCards(dadosCache.lista, dadosCache.saldoPrevio);
       renderGraficos(tRec, tPag);
@@ -562,12 +501,31 @@ function renderCards(lista, saldoPrevio) {
         Nenhum registro ainda.<br>
         <small>Faça seu primeiro lançamento!</small>
       </div>`;
+    
+    // Atualizar barras com zero quando não há dados
+    atualizarBarrasCaixa(0, 0);
     return;
   }
   
   let acum = saldoPrevio,
     html = "";
-
+    
+  // Calcular totais da lista filtrada
+  let tRecFiltrado = 0,
+    tPagFiltrado = 0;
+  
+  lista.forEach((item) => {
+    const recebido = parseFloat(String(item[3]).replace(",", ".")) || 0;
+    const pago = parseFloat(String(item[4]).replace(",", ".")) || 0;
+    tRecFiltrado += recebido;
+    tPagFiltrado += pago;
+  });
+  
+  // Atualizar barras com os totais filtrados
+  atualizarBarrasCaixa(tRecFiltrado, tPagFiltrado);
+  
+  console.log("Totais filtrados:", { tRecFiltrado, tPagFiltrado });
+  
   // Ordenar por data (mais recente primeiro)
   const listaOrdenada = [...lista].sort((a, b) => {
     const dateA = parseDate(a[1]) || new Date(0);
@@ -1627,27 +1585,84 @@ function atualizarFiltroPeriodo() {
   const tipo = document.getElementById("filtroTipo").value;
   const wrapMes = document.getElementById("wrapMes");
   const wrapPeriodo = document.getElementById("wrapPeriodo");
+  const filterInfo = document.getElementById("filterInfo");
   
   if (!wrapMes || !wrapPeriodo) return;
   
   if (tipo === "mes") {
     wrapMes.style.display = "contents";
     wrapPeriodo.style.display = "none";
-  } else {
+    if (filterInfo) filterInfo.style.display = "block";
+    atualizarContadorRegistros();
+  } else if (tipo === "periodo") {
     wrapMes.style.display = "none";
     wrapPeriodo.style.display = "contents";
+    if (filterInfo) filterInfo.style.display = "block";
+    atualizarContadorRegistros();
+  } else if (tipo === "todos") {
+    wrapMes.style.display = "none";
+    wrapPeriodo.style.display = "none";
+    if (filterInfo) {
+      filterInfo.style.display = "block";
+      // Mostra contador total
+      const totalRegistros = dadosCache.lista ? dadosCache.lista.length : 0;
+      document.getElementById("registroCount").textContent = totalRegistros;
+    }
+  }
+}
+
+
+// ─── ATUALIZAR CONTADOR DE REGISTROS ──────────────────────────────────────
+function atualizarContadorRegistros() {
+  if (!dadosCache.lista) return;
+  
+  const periodo = obterPeriodoFiltro();
+  const filterInfo = document.getElementById("filterInfo");
+  const registroCount = document.getElementById("registroCount");
+  
+  if (!filterInfo || !registroCount) return;
+  
+  let contagem = 0;
+  
+  if (!periodo) {
+    // Opção "todos" selecionada
+    contagem = dadosCache.lista.length;
+  } else {
+    // Filtrar por período
+    contagem = dadosCache.lista.filter((item) => {
+      const d = parseDate(item[1]);
+      if (!d || isNaN(d.getTime())) return false;
+      const cmp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      return cmp >= periodo.inicio && cmp <= periodo.fim;
+    }).length;
+  }
+  
+  registroCount.textContent = contagem;
+  
+  // Mostrar/ocultar baseado no resultado
+  if (contagem > 0) {
+    filterInfo.style.display = "block";
+  } else {
+    filterInfo.style.display = "none";
   }
 }
 
 function obterPeriodoFiltro() {
   const tipo = document.getElementById("filtroTipo").value;
   
+  // Se for "todos", retorna null para não filtrar
+  if (tipo === "todos") {
+    return null; // Isso significa "pegar todos os registros"
+  }
+  
   if (tipo === "mes") {
     const m = parseInt(document.getElementById("filtroMes").value);
     const a = parseInt(document.getElementById("filtroMesAno").value);
     return { 
+      tipo: "mes",
       inicio: new Date(a, m, 1), 
-      fim: new Date(a, m + 1, 0) 
+      fim: new Date(a, m + 1, 0),
+      descricao: `${obterNomeMes(m)}/${a}`
     };
   }
   
@@ -1657,200 +1672,343 @@ function obterPeriodoFiltro() {
   
   if (!i || !f) return null;
   
+  const inicio = new Date(i + "T00:00:00");
+  const fim = new Date(f + "T23:59:59");
+  
   return {
-    inicio: new Date(i + "T00:00:00"),
-    fim: new Date(f + "T23:59:59"),
+    tipo: "periodo",
+    inicio: inicio,
+    fim: fim,
+    descricao: `${fmtDateBR(i)} a ${fmtDateBR(f)}`
   };
+}
+
+// Função auxiliar para obter nome do mês
+function obterNomeMes(mesIndex) {
+  const meses = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+  return meses[mesIndex] || "Mês";
 }
 
 // ─── GERAR PDF ────────────────────────────────────────────────────────────
 async function gerarPDFLivroCaixa() {
   if (!usuarioLogado) return;
   
+  const btnPDF = document.getElementById('btnGerarPDF');
+  const btnOriginalHTML = btnPDF.innerHTML;
+  const btnOriginalText = btnPDF.querySelector('.btn-pdf-text').textContent;
+  
+  // Desabilitar botão e mostrar loading
+  btnPDF.disabled = true;
+  btnPDF.classList.add('loading');
+  btnPDF.querySelector('.btn-pdf-loading').style.display = 'flex';
+  btnPDF.querySelector('.btn-pdf-text').textContent = 'Gerando...';
+  
+  // Mostrar status
+  mostrarStatusPDF('⏳ Preparando relatório...');
+  
   const periodo = obterPeriodoFiltro();
-  if (!periodo) {
-    alert("Selecione um período válido!");
-    return;
-  }
-
   let lista, saldoPrevio;
   
   try {
+    // Atualizar status
+    mostrarStatusPDF('🔍 Buscando dados da planilha...');
+    
     const res = await fetch(
       `${API_URL}?senha=${usuarioLogado.senha}&usuario=${usuarioLogado.usuario}&action=ler`
     );
     const data = await res.json();
     lista = data.lista || [];
     saldoPrevio = parseFloat(data.saldoPrevio) || 0;
-  } catch (e) {
-    console.error("Erro ao buscar dados:", e);
-    alert("❌ Erro ao carregar dados para o PDF");
-    return;
-  }
-
-  // Filtrar registros pelo período
-  const filtrada = lista.filter((item) => {
-    const d = parseDate(item[1]);
-    if (!d || isNaN(d.getTime())) return false;
-    const cmp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    return cmp >= periodo.inicio && cmp <= periodo.fim;
-  });
-
-  if (!filtrada.length) {
-    alert("Nenhum registro no período selecionado.");
-    return;
-  }
-
-  // Ordenar por data (mais antigo primeiro)
-  filtrada.sort((a, b) => {
-    const dateA = parseDate(a[1]) || new Date(0);
-    const dateB = parseDate(b[1]) || new Date(0);
-    return dateA - dateB;
-  });
-
-  // Calcular totais
-  let tRec = 0,
-    tPag = 0;
-  filtrada.forEach((i) => {
-    const recebido = parseFloat(String(i[3]).replace(",", ".")) || 0;
-    const pago = parseFloat(String(i[4]).replace(",", ".")) || 0;
-    tRec += recebido;
-    tPag += pago;
-  });
-  
-  const mov = tRec - tPag;
-
-  // Formatar moeda para PDF
-  const fmtMoeda = (v) => {
-    const n = parseFloat(v);
-    if (isNaN(n)) return "R$ 0,00";
-    const abs = Math.abs(n),
-      p = abs.toFixed(2).split(".");
-    return (
-      (n < 0 ? "-" : "") +
-      "R$ " +
-      p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".") +
-      "," +
-      p[1]
-    );
-  };
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("p", "mm", "a4");
-  doc.setFont("helvetica");
-  
-  // Cabeçalho
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text(`LIVRO DE CAIXA - ${usuarioLogado.nome.toUpperCase()}`, 105, 20, {
-    align: "center",
-  });
-  
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  
-  const fD = (d) => {
-    if (!d || isNaN(d.getTime())) return "Data inválida";
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-  
-  doc.text(`Período: ${fD(periodo.inicio)} até ${fD(periodo.fim)}`, 105, 28, {
-    align: "center",
-  });
-
-  // Preparar corpo da tabela
-  const body = [["", "SALDO PRÉVIO", "", "", fmtMoeda(saldoPrevio)]];
-  let acum = saldoPrevio;
-  
-  filtrada.forEach((item) => {
-    const recebido = parseFloat(String(item[3]).replace(",", ".")) || 0;
-    const pago = parseFloat(String(item[4]).replace(",", ".")) || 0;
-    acum += recebido - pago;
-    const d = parseDate(item[1]);
-    const dStr = d ? fD(d) : "Data inválida";
     
-    body.push([
-      dStr,
-      item[2] || "-",
-      recebido > 0 ? fmtMoeda(recebido).replace("R$ ", "") : "",
-      pago > 0 ? fmtMoeda(pago).replace("R$ ", "") : "",
-      fmtMoeda(acum),
-    ]);
-  });
-  
-  // Adicionar totais
-  body.push(["", "", "", "", ""]);
-  body.push(["", "TOTAL RECEBIDO", fmtMoeda(tRec).replace("R$ ", ""), "", ""]);
-  body.push(["", "TOTAL PAGO", "", fmtMoeda(tPag).replace("R$ ", ""), ""]);
-  body.push(["", "SALDO MOVIMENTAÇÃO", "", "", fmtMoeda(mov)]);
-  body.push(["", "SALDO PRÉVIO", "", "", fmtMoeda(saldoPrevio)]);
-  body.push(["", "SALDO FINAL EM CAIXA", "", "", fmtMoeda(saldoPrevio + mov)]);
-
-  // Gerar tabela
-  doc.autoTable({
-    startY: 35,
-    head: [["DATA", "DESCRIÇÃO", "RECEBIDO", "PAGO", "SALDO"]],
-    body,
-    theme: "grid",
-    headStyles: {
-      fillColor: [227, 29, 26],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      halign: "center",
-      fontSize: 10,
-    },
-    bodyStyles: { fontSize: 9, cellPadding: 3 },
-    columnStyles: {
-      0: { halign: "center", cellWidth: 25 },
-      1: { halign: "left", cellWidth: 70 },
-      2: { halign: "right", cellWidth: 28 },
-      3: { halign: "right", cellWidth: 28 },
-      4: { halign: "right", cellWidth: 32 },
-    },
-    didParseCell(data) {
-      if (data.section === "body" && data.row.index === 0) {
-        data.cell.styles.fillColor = [240, 240, 240];
-        data.cell.styles.fontStyle = "bold";
+    // Se período for null (opção "todos"), usa todos os registros
+    let filtrada = lista;
+    let descricaoPeriodo = "Todos os Registros";
+    
+    if (periodo) {
+      // Atualizar status
+      mostrarStatusPDF('📊 Filtrando registros por período...');
+      
+      // Filtrar registros pelo período
+      filtrada = lista.filter((item) => {
+        const d = parseDate(item[1]);
+        if (!d || isNaN(d.getTime())) return false;
+        const cmp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        return cmp >= periodo.inicio && cmp <= periodo.fim;
+      });
+      
+      if (periodo.descricao) {
+        descricaoPeriodo = periodo.descricao;
       }
-      if (data.section === "body" && data.row.index >= body.length - 5) {
-        data.cell.styles.fillColor = [255, 255, 0];
-        data.cell.styles.fontStyle = "bold";
-      }
-    },
-  });
+    }
 
-  // Rodapé
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "italic");
-  doc.text(
-    `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
-    14,
-    doc.internal.pageSize.height - 10
-  );
+    if (!filtrada.length) {
+      // Restaurar botão
+      restaurarBotaoPDF(btnPDF, btnOriginalHTML, btnOriginalText);
+      esconderStatusPDF();
+      alert("Nenhum registro encontrado para o período selecionado.");
+      return;
+    }
 
-  // Nome do arquivo
-  const pad = (n) => String(n).padStart(2, "0");
-  const nome = `Livro_Caixa_${usuarioLogado.nome.replace(/\s/g, "_")}_${periodo.inicio.getFullYear()}${pad(periodo.inicio.getMonth() + 1)}${pad(periodo.inicio.getDate())}_a_${periodo.fim.getFullYear()}${pad(periodo.fim.getMonth() + 1)}${pad(periodo.fim.getDate())}.pdf`;
+    // Atualizar status
+    mostrarStatusPDF('📈 Calculando totais e organizando dados...');
+    
+    // Ordenar por data (mais antigo primeiro)
+    filtrada.sort((a, b) => {
+      const dateA = parseDate(a[1]) || new Date(0);
+      const dateB = parseDate(b[1]) || new Date(0);
+      return dateA - dateB;
+    });
+
+    // Calcular totais
+    let tRec = 0,
+      tPag = 0;
+    filtrada.forEach((i) => {
+      const recebido = parseFloat(String(i[3]).replace(",", ".")) || 0;
+      const pago = parseFloat(String(i[4]).replace(",", ".")) || 0;
+      tRec += recebido;
+      tPag += pago;
+    });
+    
+    const mov = tRec - tPag;
+
+    // Formatar moeda para PDF
+    const fmtMoeda = (v) => {
+      const n = parseFloat(v);
+      if (isNaN(n)) return "R$ 0,00";
+      const abs = Math.abs(n),
+        p = abs.toFixed(2).split(".");
+      return (
+        (n < 0 ? "-" : "") +
+        "R$ " +
+        p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".") +
+        "," +
+        p[1]
+      );
+    };
+
+    // Atualizar status
+    mostrarStatusPDF('🖨️ Criando documento PDF...');
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF("p", "mm", "a4");
+    doc.setFont("helvetica");
+    
+    // Cabeçalho
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`LIVRO DE CAIXA - ${usuarioLogado.nome.toUpperCase()}`, 105, 20, {
+      align: "center",
+    });
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    
+    doc.text(`Período: ${descricaoPeriodo}`, 105, 28, {
+      align: "center",
+    });
+
+    // Preparar corpo da tabela
+    const body = [["", "SALDO PRÉVIO", "", "", fmtMoeda(saldoPrevio)]];
+    let acum = saldoPrevio;
+    
+    // Atualizar status
+    mostrarStatusPDF('📋 Gerando tabela de registros...');
+    
+    filtrada.forEach((item) => {
+      const recebido = parseFloat(String(item[3]).replace(",", ".")) || 0;
+      const pago = parseFloat(String(item[4]).replace(",", ".")) || 0;
+      acum += recebido - pago;
+      const d = parseDate(item[1]);
+      const dStr = d ? fmtDateBR(d) : "Data inválida";
+      
+      body.push([
+        dStr,
+        item[2] || "-",
+        recebido > 0 ? fmtMoeda(recebido).replace("R$ ", "") : "",
+        pago > 0 ? fmtMoeda(pago).replace("R$ ", "") : "",
+        fmtMoeda(acum),
+      ]);
+    });
+    
+    // Adicionar totais
+    body.push(["", "", "", "", ""]);
+    body.push(["", "TOTAL RECEBIDO", fmtMoeda(tRec).replace("R$ ", ""), "", ""]);
+    body.push(["", "TOTAL PAGO", "", fmtMoeda(tPag).replace("R$ ", ""), ""]);
+    body.push(["", "SALDO MOVIMENTAÇÃO", "", "", fmtMoeda(mov)]);
+    body.push(["", "SALDO PRÉVIO", "", "", fmtMoeda(saldoPrevio)]);
+    body.push(["", "SALDO FINAL EM CAIXA", "", "", fmtMoeda(saldoPrevio + mov)]);
+
+    // Atualizar status
+    mostrarStatusPDF('🎨 Aplicando formatação final...');
+    
+    // Gerar tabela
+    doc.autoTable({
+      startY: 35,
+      head: [["DATA", "DESCRIÇÃO", "RECEBIDO", "PAGO", "SALDO"]],
+      body,
+      theme: "grid",
+      headStyles: {
+        fillColor: [227, 29, 26],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        halign: "center",
+        fontSize: 10,
+      },
+      bodyStyles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: {
+        0: { halign: "center", cellWidth: 25 },
+        1: { halign: "left", cellWidth: 70 },
+        2: { halign: "right", cellWidth: 28 },
+        3: { halign: "right", cellWidth: 28 },
+        4: { halign: "right", cellWidth: 32 },
+      },
+      didParseCell(data) {
+        if (data.section === "body" && data.row.index === 0) {
+          data.cell.styles.fillColor = [240, 240, 240];
+          data.cell.styles.fontStyle = "bold";
+        }
+        if (data.section === "body" && data.row.index >= body.length - 5) {
+          data.cell.styles.fillColor = [255, 255, 0];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    // Rodapé
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text(
+      `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+      14,
+      doc.internal.pageSize.height - 10
+    );
+    
+    // Adicionar informação sobre quantidade de registros
+    doc.setFontSize(7);
+    doc.text(
+      `Registros: ${filtrada.length}`,
+      14,
+      doc.internal.pageSize.height - 5
+    );
+
+    // Nome do arquivo
+    const pad = (n) => String(n).padStart(2, "0");
+    let nomeArquivo;
+    
+    if (periodo && periodo.tipo === "mes") {
+      nomeArquivo = `Livro_Caixa_${usuarioLogado.nome.replace(/\s/g, "_")}_${periodo.inicio.getFullYear()}${pad(periodo.inicio.getMonth() + 1)}.pdf`;
+    } else if (periodo && periodo.tipo === "periodo") {
+      nomeArquivo = `Livro_Caixa_${usuarioLogado.nome.replace(/\s/g, "_")}_${periodo.inicio.getFullYear()}${pad(periodo.inicio.getMonth() + 1)}${pad(periodo.inicio.getDate())}_a_${periodo.fim.getFullYear()}${pad(periodo.fim.getMonth() + 1)}${pad(periodo.fim.getDate())}.pdf`;
+    } else {
+      nomeArquivo = `Livro_Caixa_${usuarioLogado.nome.replace(/\s/g, "_")}_COMPLETO_${new Date().getFullYear()}${pad(new Date().getMonth() + 1)}${pad(new Date().getDate())}.pdf`;
+    }
+    
+    // Atualizar status
+    mostrarStatusPDF('💾 Salvando arquivo PDF...');
+    
+    // Salvar PDF
+    doc.save(nomeArquivo);
+    
+    // Mostrar sucesso no botão
+    btnPDF.classList.remove('loading');
+    btnPDF.classList.add('success');
+    btnPDF.querySelector('.btn-pdf-text').textContent = '✅ Gerado!';
+    btnPDF.querySelector('.btn-pdf-icon').textContent = '✅';
+    
+    // Mostrar mensagem informativa
+    let mensagem = `✅ PDF gerado com ${filtrada.length} registros!`;
+    if (periodo) {
+      mensagem += `\nPeríodo: ${descricaoPeriodo}`;
+    } else {
+      mensagem += `\nTodos os registros`;
+    }
+    
+    // Atualizar status final
+    mostrarStatusPDF('✅ PDF gerado com sucesso!');
+    
+    setTimeout(() => {
+      esconderStatusPDF();
+      alert(mensagem);
+      
+      // Restaurar botão após 2 segundos
+      setTimeout(() => {
+        restaurarBotaoPDF(btnPDF, btnOriginalHTML, btnOriginalText);
+      }, 2000);
+      
+    }, 1000);
+    
+  } catch (e) {
+    console.error("Erro ao gerar PDF:", e);
+    
+    // Mostrar erro no botão
+    btnPDF.classList.remove('loading');
+    btnPDF.classList.add('error');
+    btnPDF.querySelector('.btn-pdf-text').textContent = '❌ Erro!';
+    btnPDF.querySelector('.btn-pdf-icon').textContent = '❌';
+    
+    mostrarStatusPDF('❌ Erro ao gerar PDF!');
+    
+    setTimeout(() => {
+      esconderStatusPDF();
+      alert("❌ Erro ao gerar PDF: " + e.message);
+      
+      // Restaurar botão após 3 segundos
+      setTimeout(() => {
+        restaurarBotaoPDF(btnPDF, btnOriginalHTML, btnOriginalText);
+      }, 3000);
+      
+    }, 1000);
+  }
+}
+
+// Funções auxiliares para gerenciar o status
+function mostrarStatusPDF(mensagem) {
+  let statusDiv = document.getElementById('pdfStatus');
   
-  // Salvar PDF
-  doc.save(nome);
-  alert(`✅ PDF gerado! (${filtrada.length} registros)`);
+  if (!statusDiv) {
+    statusDiv = document.createElement('div');
+    statusDiv.id = 'pdfStatus';
+    statusDiv.className = 'pdf-status';
+    document.body.appendChild(statusDiv);
+  }
+  
+  statusDiv.innerHTML = `
+    <span class="pdf-status-icon">⏳</span>
+    <span class="pdf-status-text">${mensagem}</span>
+  `;
+  statusDiv.classList.add('show');
+}
+
+function esconderStatusPDF() {
+  const statusDiv = document.getElementById('pdfStatus');
+  if (statusDiv) {
+    statusDiv.classList.remove('show');
+    setTimeout(() => {
+      if (statusDiv.parentNode) {
+        statusDiv.remove();
+      }
+    }, 300);
+  }
+}
+
+function restaurarBotaoPDF(btn, originalHTML, originalText) {
+  btn.innerHTML = originalHTML;
+  btn.disabled = false;
+  btn.classList.remove('loading', 'success', 'error');
+  btn.querySelector('.btn-pdf-text').textContent = originalText;
 }
 
 
+// // ─── DESATIVAR COMPLETAMENTE TROCA DE EMPRESA ──────────────────────────────
+// // Sobrescrever a função global
+// window.mostrarTrocarEmpresa = function() {
+//   console.log("Função de trocar empresa desativada");
+//   return false;
+// };
 
-
-
-
-// ─── DESATIVAR COMPLETAMENTE TROCA DE EMPRESA ──────────────────────────────
-// Sobrescrever a função global
-window.mostrarTrocarEmpresa = function() {
-  console.log("Função de trocar empresa desativada");
-  return false;
-};
 
 // Remover qualquer botão de troca ao carregar
 document.addEventListener('DOMContentLoaded', function() {
@@ -1938,6 +2096,402 @@ window.addEventListener('resize', function() {
       }
     }, 300);
   }
+});
+
+
+// ─── LIMPAR TUDO ──────────────────────────────────────────────────────────
+async function limparTudoConfirmar() {
+  if (!usuarioLogado) {
+    alert("❌ Usuário não está logado!");
+    return;
+  }
+
+  // Confirmação importante
+  const confirmacao = confirm(
+    "⚠️ ATENÇÃO: Esta ação irá EXCLUIR TODOS os lançamentos da planilha!\n\n" +
+    "Isso removerá permanentemente todos os registros a partir da linha 2.\n\n" +
+    "O saldo inicial NÃO será alterado.\n\n" +
+    "Deseja continuar?"
+  );
+  
+  if (!confirmacao) return;
+
+  // Pedir senha para confirmar
+  const senha = prompt("Digite sua senha para confirmar a exclusão de TODOS os registros:");
+  
+  if (senha !== usuarioLogado.senha) {
+    alert("❌ Senha incorreta! Operação cancelada.");
+    return;
+  }
+
+  // Desabilitar botão durante a operação
+  const btn = document.querySelector('.btn-clear-all');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = "⏳ Excluindo...";
+  btn.disabled = true;
+
+  try {
+    // Chamar a função do Google Apps Script para limpar tudo
+    const response = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "limparTudo",
+        usuario: usuarioLogado.usuario,
+        senha: senha
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.status === "ok") {
+      alert("✅ Todos os registros foram excluídos com sucesso!");
+      
+      // Limpar cache local
+      dadosCache.lista = [];
+      
+      // Atualizar a tabela (agora vazia)
+      renderCards([], dadosCache.saldoPrevio);
+      
+      // Atualizar dashboard
+      document.getElementById("cardReceitas").innerText = fmt(0);
+      document.getElementById("cardPago").innerText = fmt(0);
+      document.getElementById("cardFluxo").innerText = fmt(0);
+      document.getElementById("cardSaldo").innerText = fmt(dadosCache.saldoPrevio);
+      
+      // Atualizar gráficos
+      renderGraficos(0, 0);
+      
+    } else {
+      alert("❌ Erro: " + (data.mensagem || "Não foi possível limpar os registros"));
+    }
+  } catch (e) {
+    console.error("Erro ao limpar registros:", e);
+    alert("❌ Erro de conexão com o servidor!");
+  } finally {
+    // Restaurar botão
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// Versão mais simples para teste
+async function limparTudoRapido() {
+  if (!usuarioLogado) return;
+  
+  if (!confirm("Tem certeza que deseja excluir TODOS os registros da planilha?\n\nEsta ação não pode ser desfeita!")) {
+    return;
+  }
+  
+  const btn = document.querySelector('.btn-clear-all');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = "⏳ Limpando...";
+  btn.disabled = true;
+  
+  try {
+    // Esta é uma chamada mais simples que você precisará implementar no Google Apps Script
+    const response = await fetch(`${API_URL}?action=limparPlanilha&usuario=${usuarioLogado.usuario}`);
+    const data = await response.json();
+    
+    if (data.status === "ok") {
+      alert("✅ Planilha limpa com sucesso!");
+      atualizarTabela(); // Isso irá recarregar a tabela vazia
+    } else {
+      alert("❌ Erro: " + data.mensagem);
+    }
+  } catch (e) {
+    alert("❌ Erro de conexão: " + e.message);
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// ─── ATUALIZAR BARRAS DE PROGRESSO ─────────────────────────────────────────
+function atualizarBarrasProgresso(totalRecebido, totalPago, saldoPrevio) {
+  // Calcular totais
+  const totalMovimentado = totalRecebido + totalPago;
+  const fluxo = totalRecebido - totalPago;
+  const saldoFinal = saldoPrevio + fluxo;
+  
+  // Atualizar textos
+  document.getElementById("progressoTotal").textContent = 
+    `Total Movimentado: ${fmt(totalMovimentado)}`;
+  
+  document.getElementById("progressoRecebido").textContent = fmt(totalRecebido);
+  document.getElementById("progressoPago").textContent = fmt(totalPago);
+  document.getElementById("progressoFluxo").textContent = fmt(fluxo);
+  
+  // Calcular porcentagens
+  let porcentagemRecebido = 0;
+  let porcentagemPago = 0;
+  
+  if (totalMovimentado > 0) {
+    porcentagemRecebido = (totalRecebido / totalMovimentado) * 100;
+    porcentagemPago = (totalPago / totalMovimentado) * 100;
+  }
+  
+  // Calcular largura do fluxo (centrado em 50%)
+  let larguraFluxo = 50; // Posição neutra
+  if (totalRecebido > 0 && totalPago > 0) {
+    // Se temos ambos valores, fluxo varia de 0-100%
+    const proporcao = totalRecebido / (totalRecebido + totalPago);
+    larguraFluxo = proporcao * 100;
+  } else if (totalRecebido > 0) {
+    // Só tem recebido
+    larguraFluxo = 100;
+  } else if (totalPago > 0) {
+    // Só tem pago
+    larguraFluxo = 0;
+  }
+  
+  // Aplicar larguras com animação
+  setTimeout(() => {
+    const barraRecebido = document.getElementById("barraRecebido");
+    const barraPago = document.getElementById("barraPago");
+    const barraFluxo = document.getElementById("barraFluxo");
+    
+    if (barraRecebido) {
+      barraRecebido.style.width = `${porcentagemRecebido}%`;
+      barraRecebido.setAttribute('data-value', totalRecebido);
+    }
+    
+    if (barraPago) {
+      barraPago.style.width = `${porcentagemPago}%`;
+      barraPago.setAttribute('data-value', totalPago);
+    }
+    
+    if (barraFluxo) {
+      barraFluxo.style.width = `${larguraFluxo}%`;
+      barraFluxo.setAttribute('data-value', fluxo);
+    }
+    
+    // Atualizar porcentagens visíveis
+    document.getElementById("porcentagemRecebido").textContent = 
+      totalMovimentado > 0 ? `${porcentagemRecebido.toFixed(1)}%` : "0%";
+    
+    document.getElementById("porcentagemPago").textContent = 
+      totalMovimentado > 0 ? `${porcentagemPago.toFixed(1)}%` : "0%";
+    
+    // Para fluxo, mostrar valor com sinal
+    const sinalFluxo = fluxo >= 0 ? "+" : "";
+    document.getElementById("porcentagemFluxo").textContent = 
+      `${sinalFluxo}${fmt(fluxo)}`;
+    
+  }, 100);
+  
+  // Adicionar tooltips para mais informações
+  adicionarTooltipsBarras();
+}
+
+// Versão simplificada que funciona melhor
+// Remover todas as versões exceto esta:
+function atualizarBarrasCaixa(totalRecebido, totalPago) {
+  const totalMovimentado = totalRecebido + totalPago;
+  const fluxo = totalRecebido - totalPago;
+  
+  // Atualizar texto do total
+  const progressoTotal = document.getElementById("progressoTotal");
+  if (progressoTotal) {
+    progressoTotal.textContent = `Total Movimentado: ${fmt(totalMovimentado)}`;
+  }
+  
+  // Atualizar valores
+  const elementos = [
+    { id: "progressoRecebido", valor: totalRecebido },
+    { id: "progressoPago", valor: totalPago },
+    { id: "progressoFluxo", valor: fluxo }
+  ];
+  
+  elementos.forEach(item => {
+    const elemento = document.getElementById(item.id);
+    if (elemento) {
+      elemento.textContent = fmt(item.valor);
+    }
+  });
+  
+  // Calcular porcentagens
+  let porcentagemRecebido = 0;
+  let porcentagemPago = 0;
+  
+  if (totalMovimentado > 0) {
+    porcentagemRecebido = (totalRecebido / totalMovimentado) * 100;
+    porcentagemPago = (totalPago / totalMovimentado) * 100;
+  }
+  
+  // Aplicar larguras
+  const barraRecebido = document.getElementById("barraRecebido");
+  const barraPago = document.getElementById("barraPago");
+  const barraFluxo = document.getElementById("barraFluxo");
+  
+  if (barraRecebido) barraRecebido.style.width = `${porcentagemRecebido}%`;
+  if (barraPago) barraPago.style.width = `${porcentagemPago}%`;
+  
+  // Para fluxo, calcular posição (50% = neutro)
+  let larguraFluxo = 50;
+  if (totalMovimentado > 0) {
+    if (fluxo > 0) {
+      larguraFluxo = 50 + (porcentagemRecebido / 2);
+    } else if (fluxo < 0) {
+      larguraFluxo = 50 - (porcentagemPago / 2);
+    }
+  }
+  
+  if (barraFluxo) barraFluxo.style.width = `${larguraFluxo}%`;
+  
+  // Atualizar porcentagens visíveis--------------------------------------------------------
+  const porcentagens = [
+    { id: "porcentagemRecebido", valor: porcentagemRecebido, sufixo: "%" },
+    { id: "porcentagemPago", valor: porcentagemPago, sufixo: "%" },
+    { id: "porcentagemFluxo", valor: fluxo, sufixo: "", formatar: true }
+  ];
+  
+  porcentagens.forEach(item => {
+    const elemento = document.getElementById(item.id);
+    if (elemento) {
+      if (item.formatar) {
+        const sinal = item.valor >= 0 ? "+" : "";
+        elemento.textContent = `${sinal}${fmt(item.valor)}`;
+      } else {
+        elemento.textContent = totalMovimentado > 0 ? `${item.valor.toFixed(1)}${item.sufixo}` : `0${item.sufixo}`;
+      }
+    }
+  });
+}
+
+// Função para adicionar tooltips informativos
+function adicionarTooltipsBarras() {
+  const barras = document.querySelectorAll('.progresso-bar');
+  
+  barras.forEach(barra => {
+    // Remover tooltips antigos
+    barra.removeEventListener('mouseenter', mostrarTooltip);
+    barra.removeEventListener('mouseleave', esconderTooltip);
+    
+    // Adicionar novos tooltips
+    barra.addEventListener('mouseenter', mostrarTooltip);
+    barra.addEventListener('mouseleave', esconderTooltip);
+  });
+}
+
+function mostrarTooltip(e) {
+  const barra = e.target;
+  const tipo = barra.classList.contains('recebido') ? 'recebido' : 
+               barra.classList.contains('pago') ? 'pago' : 'fluxo';
+  
+  const valor = barra.getAttribute('data-value') || '0';
+  const largura = barra.style.width;
+  
+  // Criar tooltip
+  const tooltip = document.createElement('div');
+  tooltip.className = 'tooltip-barra';
+  tooltip.innerHTML = `
+    <strong>${tipo === 'recebido' ? 'Recebido' : tipo === 'pago' ? 'Pago' : 'Fluxo'}</strong><br>
+    Valor: ${fmt(parseFloat(valor))}<br>
+    ${largura}
+  `;
+  
+  tooltip.style.position = 'absolute';
+  tooltip.style.background = 'var(--slate-800)';
+  tooltip.style.color = 'white';
+  tooltip.style.padding = '8px 12px';
+  tooltip.style.borderRadius = '6px';
+  tooltip.style.fontSize = '12px';
+  tooltip.style.zIndex = '1000';
+  tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+  tooltip.style.top = `${e.clientY - 80}px`;
+  tooltip.style.left = `${e.clientX - 60}px`;
+  tooltip.style.maxWidth = '200px';
+  
+  tooltip.id = 'tooltip-barra';
+  document.body.appendChild(tooltip);
+}
+
+function esconderTooltip() {
+  const tooltip = document.getElementById('tooltip-barra');
+  if (tooltip) {
+    tooltip.remove();
+  }
+}
+// Versão alternativa mais simples
+function atualizarBarrasSimples(totalRecebido, totalPago) {
+  const totalMovimentado = totalRecebido + totalPago;
+  const fluxo = totalRecebido - totalPago;
+  
+  // Atualizar valores
+  document.getElementById("progressoRecebido").textContent = fmt(totalRecebido);
+  document.getElementById("progressoPago").textContent = fmt(totalPago);
+  document.getElementById("progressoFluxo").textContent = fmt(fluxo);
+  
+  // Calcular porcentagens
+  let porcentagemRecebido = 0;
+  let porcentagemPago = 0;
+  
+  if (totalMovimentado > 0) {
+    porcentagemRecebido = (totalRecebido / totalMovimentado) * 100;
+    porcentagemPago = (totalPago / totalMovimentado) * 100;
+  }
+  
+  // Aplicar com animação suave
+  const barraRecebido = document.getElementById("barraRecebido");
+  const barraPago = document.getElementById("barraPago");
+  
+  if (barraRecebido) {
+    barraRecebido.style.transition = "width 0.8s ease";
+    barraRecebido.style.width = `${porcentagemRecebido}%`;
+  }
+  
+  if (barraPago) {
+    barraPago.style.transition = "width 0.8s ease";
+    barraPago.style.width = `${porcentagemPago}%`;
+  }
+  
+  // Atualizar porcentagens
+  document.getElementById("porcentagemRecebido").textContent = 
+    `${porcentagemRecebido.toFixed(1)}%`;
+  document.getElementById("porcentagemPago").textContent = 
+    `${porcentagemPago.toFixed(1)}%`;
+  
+  // Para fluxo, ajustar largura baseada no sinal
+  const barraFluxo = document.getElementById("barraFluxo");
+  if (barraFluxo) {
+    let larguraFluxo = 50; // Neutro
+    if (fluxo > 0) {
+      // Positivo: cresce para direita
+      larguraFluxo = 50 + Math.min((fluxo / totalRecebido) * 50, 50);
+    } else if (fluxo < 0) {
+      // Negativo: cresce para esquerda
+      larguraFluxo = 50 - Math.min((Math.abs(fluxo) / totalPago) * 50, 50);
+    }
+    barraFluxo.style.transition = "width 0.8s ease";
+    barraFluxo.style.width = `${larguraFluxo}%`;
+    
+    // Mostrar valor do fluxo
+    const sinal = fluxo >= 0 ? "+" : "";
+    document.getElementById("porcentagemFluxo").textContent = 
+      `${sinal}${fmt(fluxo)}`;
+  }
+}
+// No final do seu script.js, adicione:
+document.addEventListener('DOMContentLoaded', function() {
+  // Inicializar contador após carregar dados
+  setTimeout(() => {
+    if (dadosCache.lista) {
+      atualizarContadorRegistros();
+    }
+  }, 1000);
+  
+  // Adicionar evento para atualizar contador quando mudar filtro
+  const filtroTipo = document.getElementById('filtroTipo');
+  const filtroMes = document.getElementById('filtroMes');
+  const filtroMesAno = document.getElementById('filtroMesAno');
+  const filtroPeriodoInicio = document.getElementById('filtroPeriodoInicio');
+  const filtroPeriodoFim = document.getElementById('filtroPeriodoFim');
+  
+  if (filtroTipo) filtroTipo.addEventListener('change', atualizarContadorRegistros);
+  if (filtroMes) filtroMes.addEventListener('change', atualizarContadorRegistros);
+  if (filtroMesAno) filtroMesAno.addEventListener('change', atualizarContadorRegistros);
+  if (filtroPeriodoInicio) filtroPeriodoInicio.addEventListener('change', atualizarContadorRegistros);
+  if (filtroPeriodoFim) filtroPeriodoFim.addEventListener('change', atualizarContadorRegistros);
 });
 
 
