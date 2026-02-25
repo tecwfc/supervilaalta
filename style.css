@@ -2366,6 +2366,7 @@ body {
   gap: 0;
 }
 
+
 /* Campo de hora no modal */
 #editHora {
   width: 100%;
@@ -2398,3 +2399,80 @@ body {
   }
 }
 
+/* MELHORAR VISUALIZAÇÃO DA HORA/*/
+
+.entry-card .meta span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entry-card .meta .hora-icon {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+/* Estilo para o campo de hora no modal */
+#editHora {
+  width: 100%;
+  padding: 13px 14px;
+  border: 2px solid var(--slate-200);
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--slate-50);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#editHora:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(227, 29, 26, 0.1);
+}
+
+/* Indicador de hora no card */
+.entry-card .meta .hora-badge {
+  background: var(--slate-100);
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--slate-600);
+}
+
+/* Ajuste para quando não tem hora */
+.entry-card .meta span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entry-card .meta .hora-icon {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Estilo para cards sem hora */
+.entry-card .meta span:first-child:not(:has(.hora-icon)) {
+  background: transparent;
+  padding: 0;
+}
+.hora-icon {
+    color: var(--slate-400);
+    font-weight: normal;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.entry-card .meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
