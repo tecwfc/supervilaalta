@@ -2366,4 +2366,35 @@ body {
   gap: 0;
 }
 
+/* Campo de hora no modal */
+#editHora {
+  width: 100%;
+  padding: 13px 14px;
+  border: 2px solid var(--slate-200);
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--slate-50);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#editHora:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(227, 29, 26, 0.1);
+}
+
+/* Ajuste no layout do modal */
+.modal-box .field {
+  margin-bottom: 16px;
+}
+
+/* Para mobile, garantir que o campo de hora fique bem */
+@media (max-width: 480px) {
+  #editHora {
+    font-size: 16px; /* Evita zoom automático no iOS */
+    padding: 12px;
+  }
+}
 
