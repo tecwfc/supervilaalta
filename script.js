@@ -155,11 +155,6 @@ function entrarNoApp() {
   }, 500);
 }
 
-// let usuarioLogado = null;
-// let chartPizza = null,
-//   chartBarras = null;
-// let dadosCache = { lista: [], saldoPrevio: 0 };
-
 // ─── INIT ─────────────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
   // Configurar data atual no campo de lançamento
@@ -290,6 +285,48 @@ function fmtDateBR(raw) {
   } catch (e) {
     console.error("Erro ao formatar data:", raw, e);
     return String(raw);
+  }
+}
+
+
+function getCurrentDateTime() {
+  const now = new Date();
+  
+  // Formato DD/MM/AAAA HH:MM
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  
+  return {
+    data: `${day}/${month}/${year}`,
+    hora: `${hours}:${minutes}`,
+    dataHora: `${day}/${month}/${year} ${hours}:${minutes}`
+  };
+}
+
+function formatDateTimeFromDate(date) {
+  if (!date) return '';
+  
+  try {
+    const d = parseDate(date);
+    if (!d || isNaN(d.getTime())) return '';
+    
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    
+    return {
+      data: `${day}/${month}/${year}`,
+      hora: `${hours}:${minutes}`,
+      dataHora: `${day}/${month}/${year} ${hours}:${minutes}`
+    };
+  } catch (e) {
+    console.error('Erro ao formatar data/hora:', e);
+    return '';
   }
 }
 
@@ -502,7 +539,6 @@ function renderCards(lista, saldoPrevio) {
         <small>Faça seu primeiro lançamento!</small>
       </div>`;
     
-    // Atualizar barras com zero quando não há dados
     atualizarBarrasCaixa(0, 0);
     return;
   }
@@ -521,10 +557,7 @@ function renderCards(lista, saldoPrevio) {
     tPagFiltrado += pago;
   });
   
-  // Atualizar barras com os totais filtrados
   atualizarBarrasCaixa(tRecFiltrado, tPagFiltrado);
-  
-  console.log("Totais filtrados:", { tRecFiltrado, tPagFiltrado });
   
   // Ordenar por data (mais recente primeiro)
   const listaOrdenada = [...lista].sort((a, b) => {
@@ -541,12 +574,27 @@ function renderCards(lista, saldoPrevio) {
     const valorExib = isEntrada ? recebido : pago;
     acum += recebido - pago;
     
+    // === MODIFICADO: Extrair data e hora ===
+    let dataExib = fmtDateBR(item[1]);
+    let horaExib = '';
+    
+    // Verificar se tem hora armazenada (no índice 5 ou 6)
+    if (item[5]) { // Se a hora está no índice 5
+      horaExib = item[5];
+    } else if (item[6]) { // Se a data+hora completa está no índice 6
+      const partes = String(item[6]).split(' ');
+      if (partes.length > 1) {
+        horaExib = partes[1];
+      }
+    }
+    
     // Escapar caracteres especiais
     const descEsc = item[2]
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/'/g, "\\'");
 
+    // === MODIFICADO: Adicionar hora no HTML ===
     html += `
       <div class="entry-card ${isEntrada ? "entrada" : "saida"}">
         <div class="top-row">
@@ -557,7 +605,7 @@ function renderCards(lista, saldoPrevio) {
         </div>
         <div class="bot-row">
           <div class="meta">
-            <span>📅 ${fmtDateBR(item[1])}</span>
+            <span>📅 ${dataExib} ${horaExib ? `🕐 ${horaExib}` : ''}</span>
             <span style="color:var(--slate-300)">|</span>
             <span>Saldo: <strong>${fmt(acum)}</strong></span>
           </div>
@@ -566,7 +614,7 @@ function renderCards(lista, saldoPrevio) {
           </div>
         </div>
         <div class="actions">
-          <button class="btn-edit" onclick="abrirModal('${item[0]}','${item[1]}','${descEsc}',${recebido},${pago})">
+          <button class="btn-edit" onclick="abrirModal('${item[0]}','${item[1]}','${descEsc}',${recebido},${pago}, '${horaExib}')">
             ✏️ Editar
           </button>
           <button class="btn-del" onclick="excluir('${item[0]}')">
@@ -712,6 +760,10 @@ async function lancar() {
   // Formatar data para DD/MM/AAAA
   const p = dataInput.split("-");
   const dataFmt = `${p[2]}/${p[1]}/${p[0]}`;
+  
+  // === NOVO: Adicionar hora atual ===
+  const agora = getCurrentDateTime();
+  const dataHoraCompleta = `${dataFmt} ${agora.hora}`;
 
   // Preparar botão para loading
   const btn = document.getElementById("btnLancar");
@@ -722,7 +774,7 @@ async function lancar() {
   btn.style.cursor = "wait";
 
   try {
-    // Enviar para API
+    // Enviar para API - AGORA INCLUINDO A HORA
     const response = await fetch(API_URL, {
       method: "POST",
       body: JSON.stringify({
@@ -730,6 +782,8 @@ async function lancar() {
         usuario: usuarioLogado.usuario,
         desc: desc,
         data: dataFmt,
+        hora: agora.hora, // NOVO: enviar hora separada
+        dataHora: dataHoraCompleta, // NOVO: enviar data+hora completa
         recebido: tipo === "recebido" ? valorNum : 0,
         pago: tipo === "pago" ? valorNum : 0,
       }),
@@ -858,7 +912,7 @@ async function excluir(id) {
 }
 
 // ─── MODAL EDITAR ─────────────────────────────────────────────────────────
-async function abrirModal(id, data, desc, rec, pag) {
+async function abrirModal(id, data, desc, rec, pag, hora = '') {
   // Converter data para formato input[type="date"]
   const dataInput = toInputDate(data);
   
@@ -870,27 +924,47 @@ async function abrirModal(id, data, desc, rec, pag) {
   document.getElementById("editTipo").value = isEntrada ? "recebido" : "pago";
   document.getElementById("editValor").value = isEntrada ? rec : pag;
 
+  // === NOVO: Adicionar campo de hora se não existir ===
+  let horaField = document.getElementById("editHora");
+  if (!horaField) {
+    // Criar campo de hora no modal
+    const modalBox = document.querySelector('.modal-box');
+    const dataField = document.getElementById("editData").parentNode;
+    
+    const horaDiv = document.createElement('div');
+    horaDiv.className = 'field';
+    horaDiv.innerHTML = `
+      <label>Hora</label>
+      <input type="time" id="editHora" value="${hora || ''}" step="60" />
+    `;
+    
+    // Inserir após o campo de data
+    dataField.parentNode.insertBefore(horaDiv, dataField.nextSibling);
+    horaField = document.getElementById("editHora");
+  } else {
+    horaField.value = hora || '';
+  }
+
   // Estilizar select
   const tipoSelect = document.getElementById("editTipo");
   updateSelectColor(tipoSelect);
 
-  // Preencher descrição temporariamente
+  // Preencher descrição
   const descSelect = document.getElementById('editDesc');
   const descManual = document.getElementById('editDescManual');
   
   // Limpar e mostrar opção padrão
   descSelect.innerHTML = '<option value="">Carregando descrições...</option>';
   
-  // MOSTRAR O MODAL IMEDIATAMENTE (sem esperar as descrições)
+  // MOSTRAR O MODAL IMEDIATAMENTE
   document.getElementById("modalEditar").classList.add("show");
   
-  // Carregar descrições ASSINCRONAMENTE após mostrar o modal
+  // Carregar descrições
   setTimeout(async () => {
     try {
       await carregarDescricoesModal(desc);
     } catch (e) {
       console.error('Erro ao carregar descrições:', e);
-      // Fallback: mostrar apenas campo manual com a descrição atual
       descSelect.innerHTML = '<option value="">Erro ao carregar</option>';
       const manualOption = document.createElement('option');
       manualOption.value = "manual";
@@ -908,6 +982,7 @@ async function abrirModal(id, data, desc, rec, pag) {
     document.getElementById("editDesc").focus();
   }, 100);
 }
+
 function fecharModal() {
   const select = document.getElementById("editTipo");
   if (select) {
@@ -931,19 +1006,18 @@ async function salvarEditar() {
   const btn = document.getElementById("btnSalvarEditar");
   const id = document.getElementById("editId").value;
   const dataInput = document.getElementById("editData").value;
+  const horaInput = document.getElementById("editHora") ? document.getElementById("editHora").value : '';
   let desc = '';
   const tipo = document.getElementById("editTipo").value;
   let valor = document.getElementById("editValor").value;
 
-  // Obter descrição (pode ser do select ou do campo manual)
+  // Obter descrição
   const descSelect = document.getElementById('editDesc');
   const descManual = document.getElementById('editDescManual');
   
   if (descSelect.value === "manual") {
-    // Usar valor do campo manual
     desc = descManual ? descManual.value.trim() : '';
   } else {
-    // Usar valor do select
     desc = descSelect.value.trim();
   }
 
@@ -964,6 +1038,14 @@ async function salvarEditar() {
   // Converter data para DD/MM/AAAA
   const p = dataInput.split("-");
   const dataFmt = `${p[2]}/${p[1]}/${p[0]}`;
+  
+  // === NOVO: Usar hora fornecida ou hora atual ===
+  let horaFinal = horaInput;
+  if (!horaFinal) {
+    // Se não tem hora, usa a hora atual
+    const agora = getCurrentDateTime();
+    horaFinal = agora.hora;
+  }
 
   // Preparar botão
   btn.innerText = "Salvando…";
@@ -977,6 +1059,8 @@ async function salvarEditar() {
         usuario: usuarioLogado.usuario,
         id: id,
         data: dataFmt,
+        hora: horaFinal, // NOVO: enviar hora
+        dataHora: `${dataFmt} ${horaFinal}`, // NOVO: data+hora completa
         desc: desc,
         recebido: tipo === "recebido" ? valorNum : 0,
         pago: tipo === "pago" ? valorNum : 0,
@@ -2000,15 +2084,6 @@ function restaurarBotaoPDF(btn, originalHTML, originalText) {
   btn.classList.remove('loading', 'success', 'error');
   btn.querySelector('.btn-pdf-text').textContent = originalText;
 }
-
-
-// // ─── DESATIVAR COMPLETAMENTE TROCA DE EMPRESA ──────────────────────────────
-// // Sobrescrever a função global
-// window.mostrarTrocarEmpresa = function() {
-//   console.log("Função de trocar empresa desativada");
-//   return false;
-// };
-
 
 // Remover qualquer botão de troca ao carregar
 document.addEventListener('DOMContentLoaded', function() {
