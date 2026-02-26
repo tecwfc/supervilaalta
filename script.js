@@ -2553,14 +2553,19 @@ function atualizarBarrasCaixa(totalRecebido, totalPago) {
     { id: "porcentagemFluxo", valor: (fluxo / totalMovimentado) * 100, sufixo: "%", formatar: false }
   ];
 
-  porcentagens.forEach(item => {
+ porcentagens.forEach((item) => {
     const elemento = document.getElementById(item.id);
     if (elemento) {
       if (item.formatar) {
+        // Para valores monetários (R$)
         const sinal = item.valor >= 0 ? "+" : "";
         elemento.textContent = `${sinal}${fmt(item.valor)}`;
       } else {
-        elemento.textContent = totalMovimentado > 0 ? `${item.valor.toFixed(1)}${item.sufixo}` : `0${item.sufixo}`;
+        // Para porcentagens
+        elemento.textContent =
+          totalMovimentado > 0
+            ? `${item.valor.toFixed(1).replace(".", ",")}${item.sufixo}`
+            : `0,0${item.sufixo}`;
       }
     }
   });
@@ -2723,4 +2728,5 @@ window.abrirModal = abrirModal;
 window.fecharModal = fecharModal;
 window.salvarEditar = salvarEditar;
 window.excluir = excluir;
+
 
